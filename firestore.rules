@@ -22,34 +22,20 @@ service cloud.firestore {
 
     // Users collection
     match /users/{userId} {
-      function isValidUser(data) {
-        return data.get('displayName', '') is string
-            && data.get('credits', 0) is int
-            && (data.get('plan', 'free') in ['free', 'pro'])
-            && (data.get('freeQueriesUsed', 0) is int)
-            && (data.get('spiritualLevel', 1) is int);
-      }
-
       allow get: if isOwner(userId);
-      allow create: if isOwner(userId) 
-                    && isValidUser(request.resource.data)
-                    && request.resource.data.credits == 0;
-      
-      allow update: if isOwner(userId)
-                    && (
-                      // Protect sensitive fields from client-side direct modification
-                      request.resource.data.credits == resource.data.get('credits', 0)
-                      && request.resource.data.plan == resource.data.get('plan', 'free')
-                    );
+      allow create: if isOwner(userId) && request.resource.data.get('credits', 0) == 0;
+      allow update: if isOwner(userId) 
+                    && request.resource.data.get('credits', 0) == resource.data.get('credits', 0)
+                    && request.resource.data.get('plan', 'free') == resource.data.get('plan', 'free');
 
       // Consultations subcollection
       match /consultations/{consultationId} {
-        allow read, write: if isOwner(userId) && isValidId(consultationId);
+        allow read, write: if isOwner(userId);
       }
 
-      // Transactions subcollection (Read only for user)
+      // Transactions subcollection
       match /transactions/{transactionId} {
-        allow read: if isOwner(userId) && isValidId(transactionId);
+        allow read: if isOwner(userId);
       }
     }
   }

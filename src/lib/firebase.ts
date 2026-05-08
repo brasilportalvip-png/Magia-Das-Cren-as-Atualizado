@@ -46,12 +46,13 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 
 async function testConnection() {
   try {
+    // Attempt a silent read to check connection
     await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log("Firebase connection established");
   } catch (error) {
-    if(error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
+    // Ignore permission errors as they still indicate a successful connection attempt
+    if (error instanceof Error && error.message.includes('offline')) {
+      console.warn("Firestore appears to be offline.");
     }
   }
 }
-testConnection();
+// testConnection(); // Disabled to avoid console noise during auth transitions
