@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Users collection
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.displayName is string && data.displayName.size() <= 100
+            && data.credits is int
+            && (data.get('birthDate', '') is string)
+            && (data.get('birthTime', '') is string);
+      }
+
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) 
+                    && isValidUser(request.resource.data)
+                    && request.resource.data.credits == 0 // Default credits 0 on creation
+                    && request.resource.data.keys().hasAll(['displayName', 'credits']);
+      
+      allow update: if isOwner(userId)
+                    && isValidUser(request.resource.data)
+                    && (
+                      // Only allow specific updates from client or restricted logic
+                      // For credits, usually handled by backend, but we'll allow client to update 
+                      // personal info while strictly guarding other fields if we had them.
+                      request.resource.data.diff(resource.data).affectedKeys().hasAny(['displayName', 'birthDate', 'birthTime', 'lastFreeAccess'])
+                    );
+
+      // Consultations subcollection
+      match /consultations/{consultationId} {
+        allow read, write: if isOwner(userId) && isValidId(consultationId);
+      }
+
+      // Transactions subcollection (Read only for user)
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId) && isValidId(transactionId);
+      }
+    }
+  }
+}
