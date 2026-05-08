@@ -1,0 +1,64 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user spiritual profile and credits.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "birthDate": { "type": "string", "format": "date" },
+        "birthTime": { "type": "string" },
+        "credits": { "type": "integer" },
+        "lastFreeAccess": { "type": "string", "format": "date-time" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
+      },
+      "required": ["displayName", "credits"]
+    },
+    "Consultation": {
+      "title": "Spiritual Consultation",
+      "description": "Chat history and results of consultations.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "type": { "type": "string" },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string" },
+              "content": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "Transaction": {
+      "title": "Credit Transaction",
+      "description": "Records of credit purchases.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "integer" },
+        "status": { "type": "string" },
+        "stripeSessionId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile document."
+    },
+    "/users/{userId}/consultations/{consultationId}": {
+      "schema": "Consultation",
+      "description": "History of user spiritual sessions."
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Purchase records."
+    }
+  }
+}
