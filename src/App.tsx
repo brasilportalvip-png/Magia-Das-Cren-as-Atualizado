@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { auth, db } from "./lib/firebase";
+import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
 import { doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { motion, AnimatePresence } from "motion/react";
@@ -44,10 +44,15 @@ export default function App() {
               credits: 0,
               plan: "free",
               freeQueriesUsed: 0,
+              spiritualLevel: 1,
               createdAt: new Date().toISOString()
             };
-            setDoc(userRef, newUser);
+            setDoc(userRef, newUser, { merge: true }).catch(err => {
+              handleFirestoreError(err, OperationType.WRITE, `users/${authUser.uid}`);
+            });
           }
+        }, (error) => {
+          handleFirestoreError(error, OperationType.GET, `users/${authUser.uid}`);
         });
         
         setLoading(false);
@@ -69,25 +74,29 @@ export default function App() {
 
     const userRef = doc(db, "users", user.uid);
     
-    // Logic for FREE users
-    if (user.plan === 'free') {
-      if (user.freeQueriesUsed >= 1) {
-        setShowFreeLimit(true);
-        throw new Error("Ciclo gratuito atingido");
+    try {
+      if (user.plan === 'free') {
+        if (user.freeQueriesUsed >= 1) {
+          setShowFreeLimit(true);
+          throw new Error("Ciclo gratuito atingido");
+        }
+        await setDoc(userRef, { 
+          freeQueriesUsed: (user.freeQueriesUsed || 0) + 1,
+          lastFreeQueryAt: new Date().toISOString() 
+        }, { merge: true });
+      } else {
+        // Logic for PRO users
+        if (user.credits < amount) {
+          setShowPackages(true);
+          throw new Error("Créditos insuficientes");
+        }
+        await setDoc(userRef, { 
+          credits: Math.max(0, user.credits - amount) 
+        }, { merge: true });
       }
-      await setDoc(userRef, { 
-        freeQueriesUsed: (user.freeQueriesUsed || 0) + 1,
-        lastFreeQueryAt: new Date().toISOString() 
-      }, { merge: true });
-    } else {
-      // Logic for PRO users
-      if (user.credits < amount) {
-        setShowPackages(true);
-        throw new Error("Créditos insuficientes");
-      }
-      await setDoc(userRef, { 
-        credits: Math.max(0, user.credits - amount) 
-      }, { merge: true });
+    } catch (err) {
+      if (err instanceof Error && (err.message === "Ciclo gratuito atingido" || err.message === "Créditos insuficientes")) throw err;
+      handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
     }
   };
 

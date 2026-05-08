@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import { Message, SpiritualUser } from "../types/spiritual";
 import { ai, PABLO_SYSTEM_INSTRUCTION } from "../lib/gemini";
-import { db } from "../lib/firebase";
+import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 interface ChatSectionProps {
@@ -137,17 +137,17 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
         onNewAdvice(adviceSnippet);
       }
 
-      // Fire-and-forget sync to Firebase, won't crash if it fails (common for guests)
-      try {
-        if (user && user.uid && !user.uid.startsWith('guest')) {
-          addDoc(collection(db, `users/${user.uid}/consultations`), {
+      // Fire-and-forget sync to Firebase
+      if (user && user.uid && !user.uid.startsWith('guest')) {
+        try {
+          await addDoc(collection(db, `users/${user.uid}/consultations`), {
             messages: [...messages, userMessage, modelMessage],
             timestamp: serverTimestamp(),
             type: 'general'
-          }).catch(e => console.warn("Firebase sync background error:", e));
+          });
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}/consultations`);
         }
-      } catch (e) {
-        // Silently ignore sync errors
       }
 
     } catch (error) {

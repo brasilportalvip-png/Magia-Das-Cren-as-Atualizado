@@ -23,26 +23,23 @@ service cloud.firestore {
     // Users collection
     match /users/{userId} {
       function isValidUser(data) {
-        return data.displayName is string && data.displayName.size() <= 100
-            && data.credits is int
-            && (data.get('birthDate', '') is string)
-            && (data.get('birthTime', '') is string);
+        return data.get('displayName', '') is string
+            && data.get('credits', 0) is int
+            && (data.get('plan', 'free') in ['free', 'pro'])
+            && (data.get('freeQueriesUsed', 0) is int)
+            && (data.get('spiritualLevel', 1) is int);
       }
 
       allow get: if isOwner(userId);
       allow create: if isOwner(userId) 
                     && isValidUser(request.resource.data)
-                    && request.resource.data.credits == 0 // Default credits 0 on creation
-                    && request.resource.data.keys().hasAll(['displayName', 'credits']);
+                    && request.resource.data.credits == 0;
       
       allow update: if isOwner(userId)
-                    && isValidUser(request.resource.data)
-                    && (
-                      // Only allow specific updates from client or restricted logic
-                      // For credits, usually handled by backend, but we'll allow client to update 
-                      // personal info while strictly guarding other fields if we had them.
-                      request.resource.data.diff(resource.data).affectedKeys().hasAny(['displayName', 'birthDate', 'birthTime', 'lastFreeAccess'])
-                    );
+                    && request.resource.data.uid == resource.data.uid
+                    && request.resource.data.email == resource.data.email
+                    && request.resource.data.credits == resource.data.credits
+                    && request.resource.data.plan == resource.data.plan;
 
       // Consultations subcollection
       match /consultations/{consultationId} {

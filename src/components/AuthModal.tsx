@@ -11,7 +11,7 @@ import {
   GoogleAuthProvider,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { auth, db } from '../lib/firebase';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 interface AuthModalProps {
@@ -38,19 +38,24 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       const result = await signInWithPopup(auth, provider);
       
       // Check if user exists in Firestore
-      const userDoc = await getDoc(doc(db, 'users', result.user.uid));
-      if (!userDoc.exists()) {
-        await setDoc(doc(db, 'users', result.user.uid), {
-          uid: result.user.uid,
-          displayName: result.user.displayName || 'Buscador',
-          email: result.user.email,
-          photoURL: result.user.photoURL,
-          credits: 0,
-          plan: 'free',
-          freeQueriesUsed: 0,
-          spiritualLevel: 1,
-          createdAt: new Date().toISOString()
-        });
+      const userDocRef = doc(db, 'users', result.user.uid);
+      try {
+        const userDoc = await getDoc(userDocRef);
+        if (!userDoc.exists()) {
+          await setDoc(userDocRef, {
+            uid: result.user.uid,
+            displayName: result.user.displayName || 'Buscador',
+            email: result.user.email,
+            photoURL: result.user.photoURL,
+            credits: 0,
+            plan: 'free',
+            freeQueriesUsed: 0,
+            spiritualLevel: 1,
+            createdAt: new Date().toISOString()
+          }, { merge: true });
+        }
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`);
       }
       onClose();
     } catch (err: any) {
@@ -72,16 +77,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         onClose();
       } else if (mode === 'register') {
         const result = await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, 'users', result.user.uid), {
-          uid: result.user.uid,
-          displayName: name || 'Buscador',
-          email: email,
-          credits: 0,
-          plan: 'free',
-          freeQueriesUsed: 0,
-          spiritualLevel: 1,
-          createdAt: new Date().toISOString()
-        });
+        const userDocRef = doc(db, 'users', result.user.uid);
+        try {
+          await setDoc(userDocRef, {
+            uid: result.user.uid,
+            displayName: name || 'Buscador',
+            email: email,
+            credits: 0,
+            plan: 'free',
+            freeQueriesUsed: 0,
+            spiritualLevel: 1,
+            createdAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`);
+        }
         onClose();
       } else {
         await sendPasswordResetEmail(auth, email);
@@ -132,7 +142,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'register' && (
               <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-amber-500/70 font-bold ml-1">Nome de Registro</label>
+                <label className="text-[10px] uppercase tracking-[0.2em] text-amber-500/70 font-bold ml-1">Seu nome</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
                   <input
@@ -140,7 +150,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-white/20 focus:outline-none focus:border-amber-500/50 transition-all font-serif italic"
-                    placeholder="Como devemos lhe chamar?"
+                    placeholder="Como você se chama?"
                     required
                   />
                 </div>
@@ -148,7 +158,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             )}
 
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-[0.2em] text-amber-500/70 font-bold ml-1">E-mail Sagrado</label>
+              <label className="text-[10px] uppercase tracking-[0.2em] text-amber-500/70 font-bold ml-1">Seu e-mail</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
                 <input
@@ -156,7 +166,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-white/20 focus:outline-none focus:border-amber-500/50 transition-all"
-                  placeholder="seu@destino.com"
+                  placeholder="seu@email.com"
                   required
                 />
               </div>
@@ -164,7 +174,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
             {mode !== 'forgot' && (
               <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-[0.2em] text-amber-500/70 font-bold ml-1">Chave Espiritual</label>
+                <label className="text-[10px] uppercase tracking-[0.2em] text-amber-500/70 font-bold ml-1">Sua senha</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
                   <input
