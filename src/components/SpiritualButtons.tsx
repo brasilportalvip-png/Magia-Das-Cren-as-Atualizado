@@ -15,19 +15,14 @@ import {
 } from "lucide-react";
 
 const SPIRITUAL_TOOLS = [
-  { label: "Tarot", icon: <Hand size={24} />, color: "text-amber-400", glow: "group-hover:shadow-[0_0_30px_rgba(245,158,11,0.8)]", bg: "group-hover:bg-amber-500", border: "border-amber-500/50" },
-  { label: "Búzios", icon: <Dices size={24} />, color: "text-emerald-400", glow: "group-hover:shadow-[0_0_30px_rgba(16,185,129,0.8)]", bg: "group-hover:bg-emerald-500", border: "border-emerald-500/50" },
-  { label: "Ifá", icon: <Eye size={24} />, color: "text-cyan-400", glow: "group-hover:shadow-[0_0_30px_rgba(6,182,212,0.8)]", bg: "group-hover:bg-cyan-500", border: "border-cyan-500/50" },
-  { label: "Odu", icon: <Compass size={24} />, color: "text-purple-400", glow: "group-hover:shadow-[0_0_30px_rgba(168,85,247,0.8)]", bg: "group-hover:bg-purple-500", border: "border-purple-500/50" },
-  { label: "Orixás", icon: <ShieldCheck size={24} />, color: "text-rose-400", glow: "group-hover:shadow-[0_0_30px_rgba(244,63,94,0.8)]", bg: "group-hover:bg-rose-500", border: "border-rose-500/50" },
-  { label: "Numerologia", icon: <Binary size={24} />, color: "text-blue-400", glow: "group-hover:shadow-[0_0_30px_rgba(59,130,246,0.8)]", bg: "group-hover:bg-blue-500", border: "border-blue-500/50" },
-  { label: "Cabala", icon: <Asterisk size={24} />, color: "text-lime-400", glow: "group-hover:shadow-[0_0_30px_rgba(163,230,53,0.8)]", bg: "group-hover:bg-lime-500", border: "border-lime-500/50" },
-  { label: "Cabala Numérica", icon: <Binary size={24} />, color: "text-teal-400", glow: "group-hover:shadow-[0_0_30px_rgba(20,184,166,0.8)]", bg: "group-hover:bg-teal-500", border: "border-teal-500/50" },
-  { label: "Horóscopo", icon: <Moon size={24} />, color: "text-indigo-400", glow: "group-hover:shadow-[0_0_30px_rgba(99,102,241,0.8)]", bg: "group-hover:bg-indigo-500", border: "border-indigo-500/50" },
-  { label: "Mapa Astral", icon: <MapIcon size={24} />, color: "text-pink-400", glow: "group-hover:shadow-[0_0_30px_rgba(236,72,153,0.8)]", bg: "group-hover:bg-pink-500", border: "border-pink-500/50" },
-  { label: "Horário Planetário", icon: <Moon size={24} />, color: "text-sky-400", glow: "group-hover:shadow-[0_0_30px_rgba(14,165,233,0.8)]", bg: "group-hover:bg-sky-500", border: "border-sky-500/50" },
-  { label: "Anjo Guardião", icon: <Search size={24} />, color: "text-yellow-400", glow: "group-hover:shadow-[0_0_30px_rgba(234,179,8,0.8)]", bg: "group-hover:bg-yellow-500", border: "border-yellow-500/50" },
-  { label: "Daimon Guardião", icon: <ShieldCheck size={24} />, color: "text-orange-400", glow: "group-hover:shadow-[0_0_30px_rgba(249,115,22,0.8)]", bg: "group-hover:bg-orange-500", border: "border-orange-500/50" },
+  { label: "Tarot", icon: <Hand size={24} />, color: "text-amber-400", glow: "group-hover:shadow-[0_0_35px_rgba(245,158,11,1)]", bg: "group-hover:bg-amber-500", border: "border-amber-500/50" },
+  { label: "Búzios", icon: <Dices size={24} />, color: "text-emerald-400", glow: "group-hover:shadow-[0_0_35px_rgba(16,185,129,1)]", bg: "group-hover:bg-emerald-500", border: "border-emerald-500/50" },
+  { label: "Ifá", icon: <Eye size={24} />, color: "text-cyan-400", glow: "group-hover:shadow-[0_0_35px_rgba(6,182,212,1)]", bg: "group-hover:bg-cyan-500", border: "border-cyan-500/50" },
+  { label: "Odu", icon: <Compass size={24} />, color: "text-purple-400", glow: "group-hover:shadow-[0_0_35px_rgba(168,85,247,1)]", bg: "group-hover:bg-purple-500", border: "border-purple-500/50" },
+  { label: "Orixás", icon: <ShieldCheck size={24} />, color: "text-rose-400", glow: "group-hover:shadow-[0_0_35px_rgba(244,63,94,1)]", bg: "group-hover:bg-rose-500", border: "border-rose-500/50" },
+  { label: "Numerologia", icon: <Binary size={24} />, color: "text-blue-400", glow: "group-hover:shadow-[0_0_35px_rgba(59,130,246,1)]", bg: "group-hover:bg-blue-500", border: "border-blue-500/50" },
+  { label: "Mapa Astral", icon: <MapIcon size={24} />, color: "text-pink-400", glow: "group-hover:shadow-[0_0_35px_rgba(236,72,153,1)]", bg: "group-hover:bg-pink-500", border: "border-pink-500/50" },
+  { label: "Anjo Guardião", icon: <Search size={24} />, color: "text-yellow-400", glow: "group-hover:shadow-[0_0_35px_rgba(234,179,8,1)]", bg: "group-hover:bg-yellow-500", border: "border-yellow-500/50" },
 ];
 
 interface SpiritualButtonsProps {

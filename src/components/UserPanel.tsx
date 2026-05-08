@@ -1,100 +1,144 @@
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { 
   User, Sparkles, Hand, Dices, Eye, Compass, 
   ShieldCheck, Binary, Asterisk, Moon, MapIcon, 
-  Search, ChevronRight
+  Search, ChevronRight, Zap, Crown, Info
 } from "lucide-react";
 import { SpiritualUser } from "../types/spiritual";
 
 interface UserPanelProps {
   user: SpiritualUser | null;
-  advice?: string;
   onSelectConsultation?: (tool: string) => void;
 }
 
 const MENU_CONSULTAS = [
-  { label: "Tarot", icon: <Hand size={16} />, color: "text-amber-400", glow: "shadow-[0_0_15px_rgba(245,158,11,0.4)]", gradient: "from-amber-600/30 to-amber-900/40", border: "border-amber-500/50" },
-  { label: "Búzios", icon: <Dices size={16} />, color: "text-emerald-400", glow: "shadow-[0_0_15px_rgba(16,185,129,0.4)]", gradient: "from-emerald-600/30 to-emerald-900/40", border: "border-emerald-500/50" },
-  { label: "Ifá", icon: <Eye size={16} />, color: "text-cyan-400", glow: "shadow-[0_0_15px_rgba(6,182,212,0.4)]", gradient: "from-cyan-600/30 to-cyan-900/40", border: "border-cyan-500/50" },
-  { label: "Odu", icon: <Compass size={16} />, color: "text-purple-400", glow: "shadow-[0_0_15px_rgba(168,85,247,0.4)]", gradient: "from-purple-600/30 to-purple-900/40", border: "border-purple-500/50" },
-  { label: "Orixás", icon: <ShieldCheck size={16} />, color: "text-rose-400", glow: "shadow-[0_0_15px_rgba(244,63,94,0.4)]", gradient: "from-rose-600/30 to-rose-900/40", border: "border-rose-500/50" },
-  { label: "Numerologia", icon: <Binary size={16} />, color: "text-blue-400", glow: "shadow-[0_0_15px_rgba(59,130,246,0.4)]", gradient: "from-blue-600/30 to-blue-900/40", border: "border-blue-500/50" },
-  { label: "Cabala", icon: <Asterisk size={16} />, color: "text-lime-400", glow: "shadow-[0_0_15px_rgba(163,230,53,0.4)]", gradient: "from-lime-600/30 to-lime-900/40", border: "border-lime-500/50" },
-  { label: "Cabala Numérica", icon: <Binary size={16} />, color: "text-teal-400", glow: "shadow-[0_0_15px_rgba(20,184,166,0.4)]", gradient: "from-teal-600/30 to-teal-900/40", border: "border-teal-500/50" },
-  { label: "Horóscopo", icon: <Moon size={16} />, color: "text-indigo-400", glow: "shadow-[0_0_15px_rgba(99,102,241,0.4)]", gradient: "from-indigo-600/30 to-indigo-900/40", border: "border-indigo-500/50" },
-  { label: "Mapa Astral", icon: <MapIcon size={16} />, color: "text-pink-400", glow: "shadow-[0_0_15px_rgba(236,72,153,0.4)]", gradient: "from-pink-600/30 to-pink-900/40", border: "border-pink-500/50" },
-  { label: "Horário Planetário", icon: <Moon size={16} />, color: "text-sky-400", glow: "shadow-[0_0_15px_rgba(14,165,233,0.4)]", gradient: "from-sky-600/30 to-sky-900/40", border: "border-sky-500/50" },
-  { label: "Anjo Guardião", icon: <Search size={16} />, color: "text-yellow-400", glow: "shadow-[0_0_15px_rgba(234,179,8,0.4)]", gradient: "from-yellow-600/30 to-yellow-900/40", border: "border-yellow-500/50" },
-  { label: "Daimon Guardião", icon: <ShieldCheck size={16} />, color: "text-orange-400", glow: "shadow-[0_0_15px_rgba(249,115,22,0.4)]", gradient: "from-orange-600/30 to-orange-900/40", border: "border-orange-500/50" },
+  { label: "Tarot", icon: <Hand size={18} />, color: "text-amber-400", glow: "shadow-[0_0_20px_rgba(245,158,11,0.3)]", gradient: "from-amber-600/20 to-amber-900/30", border: "border-amber-500/30" },
+  { label: "Búzios", icon: <Dices size={18} />, color: "text-emerald-400", glow: "shadow-[0_0_20px_rgba(16,185,129,0.3)]", gradient: "from-emerald-600/20 to-emerald-900/30", border: "border-emerald-500/30" },
+  { label: "Ifá", icon: <Eye size={18} />, color: "text-cyan-400", glow: "shadow-[0_0_20px_rgba(6,182,212,0.3)]", gradient: "from-cyan-600/20 to-cyan-900/30", border: "border-cyan-500/30" },
+  { label: "Odu", icon: <Compass size={18} />, color: "text-purple-400", glow: "shadow-[0_0_20px_rgba(168,85,247,0.3)]", gradient: "from-purple-600/20 to-purple-900/30", border: "border-purple-500/30" },
+  { label: "Mapa Astral", icon: <MapIcon size={18} />, color: "text-pink-400", glow: "shadow-[0_0_20px_rgba(236,72,153,0.3)]", gradient: "from-pink-600/20 to-pink-900/30", border: "border-pink-500/30" },
+  { label: "Orixás", icon: <ShieldCheck size={18} />, color: "text-rose-400", glow: "shadow-[0_0_20px_rgba(244,63,94,0.3)]", gradient: "from-rose-600/20 to-rose-900/30", border: "border-rose-500/30" },
+  { label: "Numerologia", icon: <Binary size={18} />, color: "text-blue-400", glow: "shadow-[0_0_20_rgba(59,130,246,0.3)]", gradient: "from-blue-600/20 to-blue-900/30", border: "border-blue-500/30" },
+  { label: "Anjo Guardião", icon: <Search size={18} />, color: "text-yellow-400", glow: "shadow-[0_0_20px_rgba(234,179,8,0.3)]", gradient: "from-yellow-600/20 to-yellow-900/30", border: "border-yellow-500/30" },
 ];
 
 export default function UserPanel({ user, onSelectConsultation }: UserPanelProps) {
   if (!user) {
     return (
-      <div className="h-full bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-8 flex flex-col items-center justify-center text-center space-y-6">
-        <div className="w-20 h-20 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
-          <User size={40} />
+      <div className="h-full bg-white/5 backdrop-blur-3xl rounded-[32px] border border-white/10 p-8 flex flex-col items-center justify-center text-center space-y-8 shadow-2xl">
+        <div className="relative">
+          <div className="w-24 h-24 rounded-full bg-amber-500/5 border border-amber-500/20 flex items-center justify-center text-amber-500 shadow-[0_0_50px_rgba(245,158,11,0.1)]">
+            <User size={48} />
+          </div>
+          <Sparkles className="absolute -top-2 -right-2 text-amber-400 animate-pulse" size={24} />
         </div>
-        <div>
-          <h3 className="text-[10px] uppercase tracking-[0.3em] text-amber-500 font-bold mb-4">Portal do Buscador</h3>
-          <p className="text-xs text-white/50 italic leading-relaxed">"O portal está fechado para os curiosos. Identifique-se para revelar sua essência."</p>
+        <div className="space-y-4">
+          <h3 className="text-sm uppercase tracking-[0.4em] text-amber-500 font-black italic">Acesso Restrito</h3>
+          <p className="text-white/40 text-sm italic leading-relaxed font-serif px-4">
+            "Para que as energias possam ser direcionadas, a alma deve primeiro ser revelada."
+          </p>
         </div>
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold">Conecte-se para continuar</p>
       </div>
     );
   }
 
   return (
-    <div className="h-full bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 flex flex-col p-5 space-y-6 overflow-hidden shadow-2xl">
-      <h3 className="text-[10px] uppercase tracking-[0.3em] text-amber-500 font-bold text-center">Portal do Buscador</h3>
-      
-      <div className="flex-1 flex flex-col min-h-0 space-y-6">
-        {/* User Info Header */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-white/5 pb-2">
-            <span className="text-[10px] text-white/50 uppercase tracking-tighter">Buscador</span>
-            <span className="text-xs font-serif italic text-amber-100">{user.displayName}</span>
+    <div className="h-full bg-white/5 backdrop-blur-3xl rounded-[32px] border border-white/10 flex flex-col p-6 space-y-6 overflow-hidden shadow-2xl">
+      {/* Profile Header */}
+      <div className="flex items-center gap-4 border-b border-white/5 pb-6">
+        <div className="relative">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center overflow-hidden">
+             {user.photoURL ? (
+               <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+             ) : (
+               <User className="text-amber-500" size={24} />
+             )}
           </div>
-          
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 flex flex-col">
-              <p className="text-[8px] uppercase tracking-widest text-amber-500/70 mb-0.5">Signo</p>
-              <p className="text-[11px] font-serif truncate">{user.sign || "Calcular..."}</p>
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-[#0a0a0c] rounded-full" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] uppercase tracking-widest text-amber-500 font-black italic">Bem-vindo, Buscador</p>
+          <h2 className="text-xl font-serif text-white truncate italic">{user.displayName}</h2>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto space-y-8 pr-1 scrollbar-visible">
+        {/* Spiritual Status */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col gap-1 hover:bg-white/10 transition-colors group">
+            <span className="text-[8px] uppercase tracking-widest text-white/30 font-bold group-hover:text-amber-500 transition-colors">Plano Atual</span>
+            <div className="flex items-center gap-2">
+              <Crown className={user.plan === 'pro' ? 'text-amber-500' : 'text-white/20'} size={14} />
+              <span className="text-xs font-black uppercase text-white/90">{user.plan}</span>
             </div>
-            <div className="bg-white/5 p-2.5 rounded-xl border border-white/5 flex flex-col">
-              <p className="text-[8px] uppercase tracking-widest text-amber-500/70 mb-0.5">Orixá</p>
-              <p className="text-[11px] font-serif">Ogum ⚙️</p>
+          </div>
+          <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col gap-1 hover:bg-white/10 transition-colors group">
+            <span className="text-[8px] uppercase tracking-widest text-white/30 font-bold group-hover:text-amber-500 transition-colors">Energia Viva</span>
+            <div className="flex items-center gap-2">
+              <Zap className="text-amber-500 fill-amber-500/20" size={14} />
+              <span className="text-xs font-black text-white/90">{user.credits} CR</span>
             </div>
           </div>
         </div>
 
-        {/* Dynamic Menu List */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <p className="text-[10px] text-amber-500 uppercase tracking-[0.2em] mb-4 font-black gold-glow flex items-center justify-center gap-2 flex-shrink-0 bg-black/20 py-2 rounded-lg border border-amber-500/20">
-            <Sparkles size={10} /> Menu de Consultas
-          </p>
-          
-          <div className="flex-1 overflow-y-auto pr-2 scrollbar-visible space-y-2.5">
+        {/* Pablo's Advice - Highlighted Area */}
+        <div className="relative group">
+           <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-purple-500/20 blur opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl" />
+           <div className="relative bg-black/40 border border-amber-500/20 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-amber-500 font-black flex items-center gap-2 italic">
+                  <Sparkles size={12} /> Conselho do Cigano
+                </span>
+                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shadow-[0_0_10px_#f59e0b]" />
+              </div>
+              <p className="text-sm font-serif italic text-amber-50 leading-relaxed line-clamp-4">
+                "As correntes do destino fluem em sua direção. Mantenha os olhos da alma abertos, pois a resposta que busca está no silêncio da sua respiração."
+              </p>
+              <div className="w-full h-px bg-white/5" />
+              <button 
+                onClick={() => onSelectConsultation?.("Conselho")}
+                className="w-full text-[10px] uppercase tracking-widest text-white/30 hover:text-white transition-colors flex items-center justify-center gap-2 group/btn"
+              >
+                Ver Reflexão Completa
+                <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
+              </button>
+           </div>
+        </div>
+
+        {/* Consultation Menu - Bold List */}
+        <div className="space-y-4">
+          <h4 className="text-[10px] uppercase tracking-[0.3em] text-white/20 font-black text-center mb-6">Explore o Oculto</h4>
+          <div className="grid grid-cols-1 gap-2.5">
             {MENU_CONSULTAS.map((item) => (
               <motion.button
                 key={item.label}
-                whileHover={{ x: 5, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ x: 8 }}
                 onClick={() => onSelectConsultation?.(item.label)}
-                className={`w-full p-3 rounded-xl bg-gradient-to-r ${item.gradient} border border-white/10 hover:border-white/30 flex items-center justify-between group transition-all ${item.glow}`}
+                className={`w-full p-4 rounded-2xl bg-gradient-to-r ${item.gradient} border ${item.border} hover:border-white/40 flex items-center justify-between group transition-all ${item.glow}`}
               >
-                <div className="flex items-center gap-3">
-                  <div className={`${item.color} drop-shadow-[0_0_8px_currentColor] brightness-125`}>
+                <div className="flex items-center gap-4">
+                  <div className={`${item.color} drop-shadow-[0_0_10px_currentColor] brightness-125 transition-transform group-hover:scale-110`}>
                     {item.icon}
                   </div>
-                  <span className="text-xs font-black uppercase tracking-[0.15em] text-white/90 group-hover:text-white transition-colors">
+                  <span className="text-xs font-black uppercase tracking-[0.2em] text-white/80 group-hover:text-white group-hover:italic transition-all">
                     {item.label}
                   </span>
                 </div>
-                <ChevronRight size={14} className="text-white/20 group-hover:text-white transition-all transform group-hover:translate-x-1" />
+                <ChevronRight size={16} className="text-white/10 group-hover:text-white transition-all" />
               </motion.button>
             ))}
           </div>
         </div>
+      </div>
+      
+      {/* Footer Info */}
+      <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+         <div className="flex items-center gap-2 text-[9px] text-white/20 uppercase font-bold tracking-widest">
+           <ShieldCheck size={12} /> Proteção Ativa
+         </div>
+         <div className="text-[9px] text-white/20 uppercase font-black italic">v2.0 Astral</div>
       </div>
     </div>
   );

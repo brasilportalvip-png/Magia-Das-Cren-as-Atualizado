@@ -9,7 +9,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 interface ChatSectionProps {
   user: SpiritualUser | null;
-  onCreditUse: () => void;
+  onCreditUse: (amount: number) => void;
   onNewAdvice?: (advice: string) => void;
   initialMessage?: string;
 }
@@ -75,7 +75,17 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
-    onCreditUse(); 
+
+    // Calculate dynamic cost
+    let amount = 1;
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes("tarot")) amount = 3;
+    else if (lowerText.includes("mapa astral")) amount = 5;
+    else if (lowerText.includes("búzios")) amount = 4;
+    else if (lowerText.includes("ifá")) amount = 4;
+    else if (lowerText.includes("odu")) amount = 2;
+
+    onCreditUse(amount); 
 
     try {
       const history = messages.map(m => ({
@@ -84,10 +94,18 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
       }));
 
       const chat = ai.chats.create({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         config: {
-          systemInstruction: PABLO_SYSTEM_INSTRUCTION + `\nO usuário se chama ${user.displayName}. Dados: Nasc: ${user.birthDate || 'Não informado'}, Hora: ${user.birthTime || 'Não informado'}. 
-          IMPORTANTE: Responda de forma DIRETA. Se o usuário perguntar sobre Odu, use a numerologia da data de nascimento para calcular o Odu de nascimento (soma de dia+mês+ano reduzida ao intervalo 1-16). Seja fiel aos significados reais dos Odus de 1 a 16.`,
+          systemInstruction: PABLO_SYSTEM_INSTRUCTION + `\n
+          DADOS DO CONSULTE:
+          - Nome: ${user.displayName}
+          - Signo: ${user.sign || 'Não identificado'}
+          - Plano: ${user.plan}
+          - Nível Espiritual: ${user.spiritualLevel || 1}
+          - Créditos Atuais: ${user.credits}
+          
+          MEMÓRIA PESSOAL:
+          Lembre-se de detalhes de conversas anteriores se houver. Trate o usuário pelo nome. Sua voz deve ser mística, acolhedora e sábia.`,
         },
         history
       });

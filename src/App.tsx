@@ -1,349 +1,250 @@
 import { useState, useEffect } from "react";
-import { db } from "./lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { auth, db } from "./lib/firebase";
+import { doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { motion, AnimatePresence } from "motion/react";
-import { Sparkles, X, ArrowLeft, ChevronLeft, UserCircle, Zap, Crown, Loader2 } from "lucide-react";
-import { loadStripe } from "@stripe/stripe-js";
+import { Sparkles, X, ChevronLeft, UserCircle, Zap, Crown, Loader2, LogOut, User } from "lucide-react";
 
 import ChatSection from "./components/ChatSection";
 import CharacterAvatar from "./components/CharacterAvatar";
 import UserPanel from "./components/UserPanel";
 import SpiritualButtons from "./components/SpiritualButtons";
 import AudioControls from "./components/AudioControls";
+import AuthModal from "./components/AuthModal";
+import CreditPackagesModal from "./components/CreditPackagesModal";
+import FreeLimitModal from "./components/FreeLimitModal";
 import { SpiritualUser } from "./types/spiritual";
 import { getZodiacSign } from "./lib/spiritualUtils";
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 export default function App() {
   const [user, setUser] = useState<SpiritualUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [showPackages, setShowPackages] = useState(false);
+  const [showFreeLimit, setShowFreeLimit] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("home");
-  const [formData, setFormData] = useState({ displayName: '', birthDate: '', birthTime: '' });
   const [currentAdvice, setCurrentAdvice] = useState<string>("O universo ainda possui mensagens ocultas para você. Busque o saber através das ferramentas sagradas.");
 
   useEffect(() => {
-    // Check for payment success
-    const urlParams = new URLSearchParams(window.location.search);
-    const paymentStatus = urlParams.get('payment');
-    const sessionId = urlParams.get('session_id');
-
-    // Load guest profile from localStorage
-    const savedUser = localStorage.getItem('spiritual_guest_profile');
-    let currentUser: SpiritualUser | null = null;
-    
-    if (savedUser) {
-      currentUser = JSON.parse(savedUser);
-      
-      // Temporary: Grant credits on return from success
-      if (paymentStatus === 'success' && sessionId && currentUser) {
-        currentUser.credits += 50;
-        localStorage.setItem('spiritual_guest_profile', JSON.stringify(currentUser));
-        window.history.replaceState({}, document.title, "/");
-        alert("Graças ao Astral! Sua energia vital foi restaurada com 50 novos créditos.");
+    const unsubscribeAuth = onAuthStateChanged(auth, async (authUser) => {
+      if (authUser) {
+        // Listen to user data in Firestore
+        const userRef = doc(db, "users", authUser.uid);
+        
+        const unsubDoc = onSnapshot(userRef, (snapshot) => {
+          if (snapshot.exists()) {
+            setUser(snapshot.data() as SpiritualUser);
+          } else {
+            // Initialize user if not found (fallback)
+            const newUser: SpiritualUser = {
+              uid: authUser.uid,
+              displayName: authUser.displayName || "Buscador",
+              email: authUser.email || "",
+              photoURL: authUser.photoURL || undefined,
+              credits: 0,
+              plan: "free",
+              freeQueriesUsed: 0,
+              createdAt: new Date().toISOString()
+            };
+            setDoc(userRef, newUser);
+          }
+        });
+        
+        setLoading(false);
+        return () => unsubDoc();
+      } else {
+        setUser(null);
+        setLoading(false);
       }
-      
-      setUser(currentUser);
-    } else {
-      setShowOnboarding(true);
-    }
-    setLoading(false);
+    });
+
+    return () => unsubscribeAuth();
   }, []);
 
-  const handleCheckout = async () => {
-    if (!user) return;
-    setCheckoutLoading(true);
-    try {
-      const response = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.uid,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Erro ao criar sessão de checkout");
-      }
-
-      const session = await response.json();
-      
-      if (session.url) {
-        window.location.href = session.url;
-      } else if (session.id) {
-        const stripe = await stripePromise;
-        if (stripe) {
-          const { error } = await (stripe as any).redirectToCheckout({ sessionId: session.id });
-          if (error) throw error;
-        }
-      } else {
-        throw new Error("Sessão do Stripe inválida");
-      }
-    } catch (error: any) {
-      console.error("Checkout error:", error);
-      alert(error.message || "Houve uma oscilação na rede astral. Tente novamente em instantes.");
-    } finally {
-      setCheckoutLoading(false);
+  const handleUseCredit = async (amount: number = 1) => {
+    if (!user) {
+      setShowAuth(true);
+      return;
     }
-  };
 
-  const handleCompleteOnboarding = async () => {
-    const sign = getZodiacSign(formData.birthDate);
-    const guestId = 'guest_' + Math.random().toString(36).substr(2, 9);
+    const userRef = doc(db, "users", user.uid);
     
-    const userData: SpiritualUser = {
-      uid: guestId,
-      displayName: formData.displayName,
-      email: 'guest@magia.com',
-      birthDate: formData.birthDate,
-      birthTime: formData.birthTime,
-      sign,
-      credits: 10, // Default for guests
-      lastFreeAccess: new Date().toISOString()
-    };
-
-    // Save locally
-    localStorage.setItem('spiritual_guest_profile', JSON.stringify(userData));
-    setUser(userData);
-    setShowOnboarding(false);
-
-    // Optional: Sync to Firebase as a guest doc if needed
-    try {
-      await setDoc(doc(db, 'users', guestId), { ...userData, role: 'guest' });
-    } catch (e) {
-      console.warn("Firebase sync failed, continuing locally", e);
+    // Logic for FREE users
+    if (user.plan === 'free') {
+      if (user.freeQueriesUsed >= 1) {
+        setShowFreeLimit(true);
+        throw new Error("Ciclo gratuito atingido");
+      }
+      await setDoc(userRef, { 
+        freeQueriesUsed: (user.freeQueriesUsed || 0) + 1,
+        lastFreeQueryAt: new Date().toISOString() 
+      }, { merge: true });
+    } else {
+      // Logic for PRO users
+      if (user.credits < amount) {
+        setShowPackages(true);
+        throw new Error("Créditos insuficientes");
+      }
+      await setDoc(userRef, { 
+        credits: Math.max(0, user.credits - amount) 
+      }, { merge: true });
     }
   };
 
-  const handleUseCredit = () => {
-    if (!user) return;
-    const updated = { ...user, credits: Math.max(0, user.credits - 1) };
-    setUser(updated);
-    localStorage.setItem('spiritual_guest_profile', JSON.stringify(updated));
-  };
-
-  const resetProfile = () => {
-    localStorage.removeItem('spiritual_guest_profile');
+  const handleLogout = async () => {
+    await signOut(auth);
     setUser(null);
-    setShowOnboarding(true);
   };
 
   if (loading) {
     return (
-      <div className="h-screen w-screen bg-premium-black flex items-center justify-center">
+      <div className="h-screen w-screen bg-black flex flex-col items-center justify-center space-y-4">
         <motion.div 
           animate={{ scale: [1, 1.2, 1], rotate: [0, 180, 360] }}
           transition={{ duration: 3, repeat: Infinity }}
-          className="text-gold"
+          className="text-amber-500"
         >
           <Sparkles size={48} />
         </motion.div>
+        <span className="text-[10px] text-amber-500/50 uppercase tracking-[0.4em] font-black animate-pulse">Sintonizando Frequências</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen lg:h-screen w-full bg-premium-black text-white relative overflow-x-hidden lg:overflow-hidden flex flex-col font-sans lg:border-8 border-border-frame select-none">
-      {/* Dynamic Background */}
+    <div className="min-h-screen lg:h-screen w-full bg-[#050505] text-white relative overflow-x-hidden lg:overflow-hidden flex flex-col font-sans select-none border-0">
+      {/* Background Layer */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-mystic-purple/20 blur-[120px] rounded-full" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-amber-900/10 blur-[120px] rounded-full" />
+          <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-purple-900/10 blur-[150px] rounded-full" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-amber-900/10 blur-[150px] rounded-full" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_#050505_100%)]" />
       </div>
 
-      {/* Header / Nav */}
-      <header className="relative z-20 px-4 py-4 lg:px-8 lg:py-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5 backdrop-blur-sm bg-black/20">
+      <header className="relative z-20 px-4 py-4 lg:px-8 lg:py-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5 backdrop-blur-xl bg-black/40">
          <div className="flex items-center gap-4 lg:gap-6 min-h-[48px] lg:min-h-[64px] w-full sm:w-auto">
             {activeTab !== "home" && (
                 <button 
                     onClick={() => setActiveTab("home")}
-                    className="px-4 py-2 lg:px-6 lg:py-3 rounded-2xl border-2 lg:border-4 border-amber-500 text-amber-100 hover:bg-amber-500 hover:text-black transition-all flex items-center gap-2 lg:gap-3 backdrop-blur-xl shadow-[0_0_20px_rgba(245,158,11,0.2)] group overflow-hidden relative"
+                    className="px-4 py-2 lg:px-6 lg:py-3 rounded-2xl border-2 border-amber-500 text-amber-100 hover:bg-amber-500 hover:text-black transition-all flex items-center gap-2 lg:gap-3 backdrop-blur-xl shadow-[0_0_20px_rgba(245,158,11,0.2)] group"
                 >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
                     <ChevronLeft size={20} strokeWidth={4} />
-                    <span className="text-sm lg:text-lg font-black uppercase tracking-[0.2em] italic">Início</span>
+                    <span className="text-sm lg:text-lg font-black uppercase tracking-[0.2em] italic">Voltar</span>
                 </button>
             )}
-            <div className="flex items-center gap-3 lg:gap-4 overflow-hidden">
-              <div className="w-8 h-8 lg:w-12 lg:h-12 flex-shrink-0 border-2 border-gold rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.4)]">
-                <div className="w-2 h-2 lg:w-3 lg:h-3 bg-gold rounded-full shadow-[0_0_15px_#f59e0b] animate-pulse"></div>
+            <div className="flex items-center gap-3 lg:gap-4">
+              <div className="w-8 h-8 lg:w-12 lg:h-12 border-2 border-amber-500 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.4)]">
+                <Sparkles className="w-4 h-4 lg:w-6 lg:h-6 text-amber-500 animate-pulse" />
               </div>
-              <h1 className="text-xl lg:text-3xl font-serif tracking-[0.1em] lg:tracking-[0.2em] text-amber-50 uppercase gold-glow truncate">Magia das Crenças</h1>
+              <h1 className="text-xl lg:text-3xl font-serif tracking-[0.1em] lg:tracking-[0.2em] text-amber-50 uppercase gold-glow truncate cursor-default">Magia das Crenças</h1>
             </div>
          </div>
 
          <div className="flex items-center gap-4 lg:gap-8 w-full sm:w-auto justify-between sm:justify-end">
-            {user && (
-                <div className="flex items-center gap-4 lg:gap-8">
+            {user ? (
+                <div className="flex items-center gap-4 lg:gap-6">
                     <div className="flex flex-col items-end">
-                        <span className="text-[8px] lg:text-[10px] uppercase tracking-widest text-amber-500/70 font-semibold italic">Energia Vital</span>
-                        <span className="text-sm lg:text-lg font-mono text-amber-200">{user.credits} / 10</span>
+                        <span className="text-[8px] lg:text-[10px] uppercase tracking-widest text-amber-500 font-bold italic">Energia Vital</span>
+                        <span className="text-sm lg:text-lg font-mono text-amber-200">
+                           {user.plan === 'free' ? `${user.freeQueriesUsed}/1 Free` : `${user.credits} CR`}
+                        </span>
                     </div>
                     <div className="flex gap-2 lg:gap-4 items-center">
                        <button 
-                          disabled={checkoutLoading}
-                          className="bg-gradient-to-r from-amber-600 to-amber-400 text-black px-3 py-1.5 lg:px-5 lg:py-2 rounded-full text-[10px] lg:text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_20px_rgba(245,158,11,0.4)] flex items-center gap-2 group disabled:opacity-50"
-                          onClick={handleCheckout}
+                          onClick={() => setShowPackages(true)}
+                          className="bg-gradient-to-r from-amber-600 to-amber-400 text-black px-3 py-2 lg:px-6 lg:py-2.5 rounded-2xl text-[10px] lg:text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_30px_rgba(245,158,11,0.3)] flex items-center gap-2 group"
                        >
-                          {checkoutLoading ? <Loader2 size={12} className="animate-spin" /> : <Crown size={12} className="group-hover:rotate-12 transition-transform" />}
-                          <span className="hidden xs:inline">Plano Pro</span>
+                          <Crown size={12} className="group-hover:rotate-12 transition-transform" />
+                          <span>Adquirir PRO</span>
                        </button>
                        <button 
-                          onClick={resetProfile}
-                          className="w-8 h-8 lg:w-10 lg:h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors text-amber-500/50"
-                          title="Trocar Perfil"
+                          onClick={handleLogout}
+                          className="w-10 h-10 lg:w-12 lg:h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white/40 hover:text-red-400"
+                          title="Sair"
                        >
-                          <UserCircle size={16} />
+                          <LogOut size={18} />
                        </button>
                     </div>
                 </div>
+            ) : (
+                <button 
+                  onClick={() => setShowAuth(true)}
+                  className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl text-xs font-bold uppercase tracking-[0.2em] hover:bg-white/10 transition-all flex items-center gap-3 group"
+                >
+                  <User size={16} className="text-amber-500" />
+                  Conectar Minha Alma
+                </button>
             )}
          </div>
       </header>
 
-      {/* Main Layout */}
-      <main className="relative z-10 flex-1 flex flex-col lg:grid lg:grid-cols-[1fr_minmax(0,350px)] xl:grid-cols-[650px_1fr_300px] gap-6 p-4 lg:p-6 h-full overflow-y-auto lg:overflow-hidden bg-black/10">
+      <main className="relative z-10 flex-1 flex flex-col lg:grid xl:grid-cols-[1fr_400px_350px] gap-6 p-4 lg:p-6 h-full overflow-hidden">
         {activeTab === "home" ? (
             <>
-                {/* Left: Chat - Main focus */}
-                <div className="order-2 lg:order-1 h-[600px] lg:h-full min-h-0">
+                <div className="order-2 lg:order-1 h-full min-h-0 xl:col-span-1">
                   <ChatSection 
                     user={user} 
                     onCreditUse={handleUseCredit} 
-                    onNewAdvice={(advice) => setCurrentAdvice(advice)}
+                    onNewAdvice={setCurrentAdvice}
                   />
                 </div>
 
-                {/* Center: Stage - Desktop only or top on mobile */}
-                <div className="order-1 lg:order-2 flex items-center justify-center py-8 lg:py-0 min-h-0">
+                <div className="order-1 lg:order-2 flex items-center justify-center py-4 lg:py-0 min-h-0">
                   <CharacterAvatar />
                 </div>
 
-                {/* Right: User Panel - Bottom on mobile */}
-                <div className="order-3 h-auto lg:h-full min-h-0">
-                  <UserPanel user={user} advice={currentAdvice} onSelectConsultation={setActiveTab} />
+                <div className="order-3 h-full min-h-0">
+                  <UserPanel 
+                    user={user} 
+                    onSelectConsultation={setActiveTab} 
+                  />
                 </div>
             </>
         ) : (
-            <div className="col-span-full h-full flex flex-col lg:flex-row gap-6 overflow-hidden min-h-0">
-                <div className="w-full lg:w-[650px] xl:w-[850px] h-[600px] lg:h-full min-h-0 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+            <div className="col-span-full h-full flex flex-col lg:flex-row gap-6 overflow-hidden">
+                <div className="flex-1 h-full min-h-0 bg-black/40 rounded-[32px] border border-white/5">
                     <ChatSection 
                         user={user} 
-                        onCreditUse={handleUseCredit} 
+                        onCreditUse={(amt) => handleUseCredit(amt)} 
                         initialMessage={`Cigano Pablo, por favor, realize uma leitura de **${activeTab}** para mim agora.`}
-                        onNewAdvice={(advice) => setCurrentAdvice(advice)}
-                        key={activeTab} // Force re-mount for new reading context
+                        onNewAdvice={setCurrentAdvice}
+                        key={activeTab}
                     />
                 </div>
-                <div className="flex-1 glass-panel rounded-3xl p-6 lg:p-12 flex flex-col items-center justify-center relative overflow-hidden border-2 border-gold/20 min-h-[300px]">
-                     <div className="absolute inset-0 opacity-5 pointer-events-none">
-                        <img 
-                          src="https://upload.wikimedia.org/wikipedia/commons/e/e0/Tetragrammaton_Pentagram.svg" 
-                          className="w-full h-full object-contain invert"
-                          alt=""
-                        />
-                     </div>
-                    <div className="text-center space-y-4 lg:space-y-8 relative z-10">
-                        <motion.div 
-                          animate={{ rotateY: 360 }}
-                          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-                          className="w-16 h-16 lg:w-24 lg:h-24 rounded-full border-2 border-gold mx-auto flex items-center justify-center text-gold bg-gold/10 shadow-[0_0_30px_rgba(245,158,11,0.2)]"
-                        >
-                            <Sparkles className="w-8 h-8 lg:w-12 lg:h-12" />
-                        </motion.div>
-                        <h2 className="text-2xl lg:text-4xl font-serif italic text-gold gold-glow uppercase tracking-widest">{activeTab}</h2>
-                        <p className="text-amber-100/60 max-w-xs lg:max-w-md text-xs lg:text-lg italic leading-relaxed font-serif">
-                          "As energias se concentram. Pablo está desvendando o véu para você agora."
-                        </p>
-                        <div className="flex flex-col gap-2 items-center">
-                             <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[8px] lg:text-[10px] uppercase tracking-widest text-gold/60">Conectando ao Astral...</div>
-                             <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[8px] lg:text-[10px] uppercase tracking-widest text-gold/60 text-center">Sincronizando Destino...</div>
-                        </div>
+                <div className="w-full lg:w-[400px] bg-white/5 backdrop-blur-xl rounded-[32px] border border-white/10 p-8 flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://portalvipbrasil.com.br/wp-content/uploads/2026/05/bg-pattern.png')] bg-repeat"></div>
+                    <motion.div 
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                        className="w-24 h-24 rounded-full border border-amber-500/20 flex items-center justify-center text-amber-500 bg-amber-500/5 shadow-[0_0_40px_rgba(245,158,11,0.1)]"
+                    >
+                        <Sparkles size={40} />
+                    </motion.div>
+                    <h2 className="text-3xl font-serif italic text-white uppercase tracking-widest">{activeTab}</h2>
+                    <p className="text-white/50 text-sm leading-relaxed italic font-serif">
+                      "O véu entre os mundos se torna tênue. Concentre-se em sua pergunta enquanto os símbolos sagrados se revelam."
+                    </p>
+                    <div className="flex flex-col gap-3 w-full pt-6">
+                        <div className="px-4 py-2 bg-black/20 rounded-xl text-[10px] uppercase tracking-widest text-amber-500/60 border border-white/5">Conexão Estabelecida</div>
+                        <div className="px-4 py-2 bg-black/20 rounded-xl text-[10px] uppercase tracking-widest text-amber-500/60 border border-white/5">Sintonizando Vibrações</div>
                     </div>
                 </div>
             </div>
         )}
       </main>
 
-      {/* Quick Oracles Footer */}
-      <footer className="relative z-20 w-full px-4 py-4 lg:px-8 lg:py-6 border-t border-white/5 bg-black/40 backdrop-blur-md">
+      <footer className="relative z-20 w-full px-4 py-4 lg:px-8 lg:py-6 border-t border-white/5 bg-black/60 backdrop-blur-xl shrink-0">
         <SpiritualButtons onSelect={setActiveTab} />
       </footer>
 
-      {/* Audio Layer */}
       <AudioControls />
 
-      {/* Onboarding Modal */}
-      <AnimatePresence>
-        {showOnboarding && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6"
-          >
-            <motion.div 
-               initial={{ scale: 0.9, y: 20 }}
-               animate={{ scale: 1, y: 0 }}
-               className="max-w-md w-full glass-panel p-8 rounded-3xl border border-gold/30 shadow-[0_0_100px_rgba(212,175,55,0.1)]"
-            >
-               <div className="text-center mb-8">
-                  <Sparkles className="text-gold mx-auto mb-4" size={32} />
-                  <h2 className="text-2xl font-serif text-gold italic">Bem-vindo à sua Jornada</h2>
-                  <p className="text-sm text-white/50 mt-2">Para calibrar suas energias, Pablo precisa de algumas informações sagradas.</p>
-               </div>
-
-               <div className="space-y-4">
-                  <div className="space-y-1">
-                     <label className="text-xs text-gold/60 uppercase tracking-widest px-1">Nome Completo</label>
-                     <input 
-                        value={formData.displayName}
-                        onChange={(e) => setFormData({...formData, displayName: e.target.value})}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-gold/40 transition-all" 
-                        placeholder="Como você é conhecido na Terra?"
-                     />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-xs text-gold/60 uppercase tracking-widest px-1">Nascimento</label>
-                        <input 
-                           type="date"
-                           value={formData.birthDate}
-                           onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-gold/40 transition-all dark-calendar-inverse" 
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs text-gold/60 uppercase tracking-widest px-1">Hora (Opcional)</label>
-                        <input 
-                           type="time"
-                           value={formData.birthTime}
-                           onChange={(e) => setFormData({...formData, birthTime: e.target.value})}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-gold/40 transition-all dark-calendar-inverse" 
-                        />
-                    </div>
-                  </div>
-               </div>
-
-               <button 
-                  onClick={handleCompleteOnboarding}
-                  disabled={!formData.displayName || !formData.birthDate}
-                  className="w-full py-4 bg-gold text-black font-bold rounded-2xl mt-8 hover:bg-white transition-all shadow-[0_0_30px_rgba(212,175,55,0.3)] disabled:opacity-50"
-               >
-                  DESPERTAR MINHA MAGIA
-               </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} />
+      <CreditPackagesModal isOpen={showPackages} onClose={() => setShowPackages(false)} userId={user?.uid} />
+      <FreeLimitModal isOpen={showFreeLimit} onClose={() => setShowFreeLimit(false)} onPurchaseCredits={() => { setShowFreeLimit(false); setShowPackages(true); }} />
 
       <style>{`
         .spinner-slow { animation: spin 20s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .dark-calendar-inverse::-webkit-calendar-picker-indicator { filter: invert(1); }
       `}</style>
     </div>
   );

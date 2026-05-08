@@ -2,11 +2,16 @@ export type SpiritualUser = {
   uid: string;
   displayName: string;
   email: string;
+  photoURL?: string;
   credits: number;
+  plan: 'free' | 'pro';
+  freeQueriesUsed: number;
+  lastFreeQueryAt?: string;
   birthDate?: string;
   birthTime?: string;
   sign?: string;
-  lastFreeAccess?: string;
+  spiritualLevel?: number;
+  createdAt: string;
 };
 
 export type Message = {
@@ -21,30 +26,36 @@ export type CreditPackage = {
   price: number;
   credits: number;
   description: string;
-  isVip?: boolean;
+  color: string;
+  glow: string;
 };
 
 export const SPIRITUAL_PACKAGES: CreditPackage[] = [
   {
-    id: 'package_spiritual',
-    name: 'PACOTE ESPIRITUAL',
+    id: 'bronze',
+    name: 'PACOTE BRONZE',
     price: 19.90,
-    credits: 10,
-    description: '3 consultas completas + 5 perguntas rápidas'
+    credits: 20,
+    description: 'Ideal para consultas rápidas e pontuais.',
+    color: 'from-orange-400 to-amber-700',
+    glow: 'shadow-orange-500/20'
   },
   {
-    id: 'package_premium',
-    name: 'PACOTE PREMIUM',
-    price: 99.90,
-    credits: 50,
-    description: '10 consultas + 20 perguntas + mapa astral resumido'
+    id: 'silver',
+    name: 'PACOTE PRATA',
+    price: 49.90,
+    credits: 70,
+    description: 'Equilíbrio perfeito para seu autoconhecimento.',
+    color: 'from-slate-300 to-slate-500',
+    glow: 'shadow-slate-400/20'
   },
   {
-    id: 'package_vip',
-    name: 'ORÁCULO VIP',
-    price: 150.00,
-    credits: 200,
-    description: '30 consultas + 100 perguntas + mapa astral completo + efeitos VIP',
-    isVip: true
+    id: 'gold',
+    name: 'PACOTE OURO',
+    price: 97.00,
+    credits: 150,
+    description: 'Acesso total e profundo à sabedoria do Cigano.',
+    color: 'from-amber-300 to-yellow-600',
+    glow: 'shadow-yellow-500/40'
   }
 ];
