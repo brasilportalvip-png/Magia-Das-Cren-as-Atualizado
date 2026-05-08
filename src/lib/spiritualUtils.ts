@@ -19,15 +19,3 @@ export function getZodiacSign(dateStr: string): string {
   if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return "Capricórnio";
   return "Místico";
 }
-
-export async function createStripeCheckout(userId: string, packageId: string) {
-  const response = await fetch('/api/create-checkout-session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, priceId: packageId }) // In reality, we'd map packageId to a Stripe Price ID
-  });
-  
-  const session = await response.json();
-  if (session.error) throw new Error(session.error);
-  return session.id;
-}

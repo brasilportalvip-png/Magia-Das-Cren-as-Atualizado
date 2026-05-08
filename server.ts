@@ -24,15 +24,13 @@ async function startServer() {
   // Stripe Checkout Endpoint
   app.post("/api/create-checkout-session", async (req, res) => {
     if (!stripe) {
+      console.error("Stripe Secret Key is missing in environment variables");
       return res.status(500).json({ error: "Stripe not configured" });
     }
 
-    const { priceId = "price_premium_access", userId, credits = 50 } = req.body;
-    const protocol = req.headers["x-forwarded-proto"] || "http";
-    const host = req.headers.host;
-    const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
-
     try {
+      const { userId } = req.body;
+      
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
         line_items: [
@@ -40,28 +38,27 @@ async function startServer() {
             price_data: {
               currency: "brl",
               product_data: {
-                name: "Energia Vital - Plano Pro",
-                description: `Recarga de ${credits} créditos de Energia Vital com Cigano Pablo.`,
-                images: ["https://portalvipbrasil.com.br/wp-content/uploads/2026/05/ChatGPT-Image-7-de-mai.-de-2026-18_15_54.png"],
+                name: "Plano PRO - Magia Das Crenças",
+                description: "Recarga de 50 créditos de Energia Vital com Cigano Pablo.",
               },
-              unit_amount: 4990, // R$ 49,90
+              unit_amount: 1990, // R$ 19,90
             },
             quantity: 1,
           },
         ],
         mode: "payment",
-        success_url: `${baseUrl}/?session_id={CHECKOUT_SESSION_ID}&payment=success`,
-        cancel_url: `${baseUrl}/?payment=cancel`,
+        success_url: `https://www.magiadascrencas.com.br/sucesso`,
+        cancel_url: `https://www.magiadascrencas.com.br`,
         metadata: {
           userId,
-          credits: String(credits),
+          credits: "50",
         },
       });
 
       res.json({ id: session.id, url: session.url });
     } catch (error: any) {
       console.error("Stripe Error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message || "Internal Server Error" });
     }
   });
 

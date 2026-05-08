@@ -13,7 +13,7 @@ import AudioControls from "./components/AudioControls";
 import { SpiritualUser } from "./types/spiritual";
 import { getZodiacSign } from "./lib/spiritualUtils";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || "pk_test_placeholder");
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 export default function App() {
   const [user, setUser] = useState<SpiritualUser | null>(null);
@@ -61,22 +61,30 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.uid,
-          credits: 50,
         }),
       });
       
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erro ao criar sessão de checkout");
+      }
+
       const session = await response.json();
+      
       if (session.url) {
         window.location.href = session.url;
-      } else {
+      } else if (session.id) {
         const stripe = await stripePromise;
         if (stripe) {
-          await (stripe as any).redirectToCheckout({ sessionId: session.id });
+          const { error } = await (stripe as any).redirectToCheckout({ sessionId: session.id });
+          if (error) throw error;
         }
+      } else {
+        throw new Error("Sessão do Stripe inválida");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Checkout error:", error);
-      alert("Houve uma oscilação na rede astral. Tente novamente em instantes.");
+      alert(error.message || "Houve uma oscilação na rede astral. Tente novamente em instantes.");
     } finally {
       setCheckoutLoading(false);
     }
