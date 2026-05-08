@@ -171,7 +171,7 @@ export default function App() {
                   className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl text-xs font-bold uppercase tracking-[0.2em] hover:bg-white/10 transition-all flex items-center gap-3 group"
                 >
                   <User size={16} className="text-amber-500" />
-                  Conectar Minha Alma
+                  Conectar/Criar Conta
                 </button>
             )}
          </div>

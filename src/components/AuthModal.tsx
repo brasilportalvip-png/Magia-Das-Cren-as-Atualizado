@@ -202,7 +202,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               ) : (
                 <>
-                  {mode === 'login' ? 'Conectar Alma' : mode === 'register' ? 'Criar Destino' : 'Enviar Link'}
+                  {mode === 'login' ? 'Conectar/Criar Conta' : mode === 'register' ? 'Conectar/Criar Conta' : 'Enviar Link'}
                   <ArrowRight size={18} />
                 </>
               )}
