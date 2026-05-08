@@ -36,10 +36,11 @@ service cloud.firestore {
                     && request.resource.data.credits == 0;
       
       allow update: if isOwner(userId)
-                    && request.resource.data.uid == resource.data.uid
-                    && request.resource.data.email == resource.data.email
-                    && request.resource.data.credits == resource.data.credits
-                    && request.resource.data.plan == resource.data.plan;
+                    && (
+                      // Protect sensitive fields from client-side direct modification
+                      request.resource.data.credits == resource.data.get('credits', 0)
+                      && request.resource.data.plan == resource.data.get('plan', 'free')
+                    );
 
       // Consultations subcollection
       match /consultations/{consultationId} {
