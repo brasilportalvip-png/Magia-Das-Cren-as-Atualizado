@@ -3,13 +3,13 @@ import { Send, Sparkles, Heart, DollarSign, Activity, Briefcase, Users, Home } f
 import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import { Message, SpiritualUser } from "../types/spiritual";
-import { ai, PABLO_SYSTEM_INSTRUCTION } from "../lib/gemini";
+import { PABLO_SYSTEM_INSTRUCTION } from "../lib/gemini";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 interface ChatSectionProps {
   user: SpiritualUser | null;
-  onCreditUse: (amount: number) => void;
+  onCreditUse: (amount: number) => Promise<void>;
   onNewAdvice?: (advice: string) => void;
   initialMessage?: string;
 }
@@ -66,9 +66,22 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
         setMessages(prev => [...prev, { role: 'model', content: "Por favor, identifique-se no painel ao lado para que possamos ler seu destino.", timestamp: Date.now() }]);
         return;
     }
-    if (user.credits <= 0) {
-        setMessages(prev => [...prev, { role: 'model', content: "Suas energias se esgotaram. Adquira um novo pacote espiritual para continuarmos nossa jornada.", timestamp: Date.now() }]);
+    const lowerText = text.toLowerCase();
+    let amount = 1;
+    if (lowerText.includes("tarot")) amount = 3;
+    else if (lowerText.includes("mapa astral")) amount = 5;
+    else if (lowerText.includes("búzios")) amount = 4;
+    else if (lowerText.includes("ifá")) amount = 4;
+    else if (lowerText.includes("odu")) amount = 2;
+
+    if (user.plan === 'free') {
+      if (user.freeQueriesUsed >= 50) {
+        setMessages(prev => [...prev, { role: 'model', content: "Suas energias gratuitas para este ciclo se esgotaram. Pablo convida você a desequilibrar a balança com um de nossos pacotes espirituais.", timestamp: Date.now() }]);
         return;
+      }
+    } else if (user.credits < amount) {
+      setMessages(prev => [...prev, { role: 'model', content: "Suas energias atuais são insuficientes para esta consulta profunda. Pablo sugere que você recarregue sua Energia Vital.", timestamp: Date.now() }]);
+      return;
     }
 
     const userMessage: Message = { role: 'user', content: text, timestamp: Date.now() };
@@ -76,42 +89,54 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
     setInput("");
     setIsLoading(true);
 
-    // Calculate dynamic cost
-    let amount = 1;
-    const lowerText = text.toLowerCase();
-    if (lowerText.includes("tarot")) amount = 3;
-    else if (lowerText.includes("mapa astral")) amount = 5;
-    else if (lowerText.includes("búzios")) amount = 4;
-    else if (lowerText.includes("ifá")) amount = 4;
-    else if (lowerText.includes("odu")) amount = 2;
-
-    onCreditUse(amount); 
-
     try {
-      const history = messages.map(m => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }]
-      }));
+      await onCreditUse(amount); 
 
-      const chat = ai.chats.create({
-        model: "gemini-1.5-flash",
-        config: {
-          systemInstruction: PABLO_SYSTEM_INSTRUCTION + `\n
+      // Build history excluding the very first model-only welcome message if it's the only one
+      // or ensuring it starts with user to comply with API expectations
+      const conversationHistory = messages
+        .filter((m, i) => !(i === 0 && m.role === 'model'))
+        .map(m => ({
+          role: m.role === 'user' ? 'user' : 'model',
+          parts: [{ text: m.content }]
+        }));
+
+      // Add current message to contents
+      const contents = [
+        ...conversationHistory,
+        { role: 'user', parts: [{ text: text }] }
+      ];
+
+      const systemInstruction = PABLO_SYSTEM_INSTRUCTION + `\n
           DADOS DO CONSULTE:
-          - Nome: ${user.displayName}
+          - Nome de Solteiro/Nascimento: ${user.displayName}
+          - Data de Nascimento: ${user.birthDate || 'Não informada'}
+          - Hora de Nascimento: ${user.birthTime || 'Não informada'}
           - Signo: ${user.sign || 'Não identificado'}
+          - Número da Alma (Nome): ${user.nameNumber || 'Não calculado'}
+          - Odu Regente: ${user.regentOdu?.number || 'Não calculado'} (${user.regentOdu?.name || 'Não calculado'})
+          - Número de Destino: ${user.lifePathNumber || 'Não calculado'}
+          - Elemento Espiritual: ${user.spiritualElement || 'Não calculado'}
           - Plano: ${user.plan}
           - Nível Espiritual: ${user.spiritualLevel || 1}
           - Créditos Atuais: ${user.credits}
           
-          MEMÓRIA PESSOAL:
-          Lembre-se de detalhes de conversas anteriores se houver. Trate o usuário pelo nome. Sua voz deve ser mística, acolhedora e sábia.`,
-        },
-        history
+          MEMÓRIA PESSOAL (CONSIDERAR):
+          Utilize a Data, Hora e Nome para realizar os cálculos tradicionais necessários para a resposta. Trate o usuário pelo nome. Sua voz deve ser mística, acolhedora e sábia.`;
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents, systemInstruction })
       });
 
-      const result = await chat.sendMessage({ message: text });
-      const modelContent = result.text;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const modelContent = data.text || "As estrelas estão em silêncio momentâneo... (Erro de resposta)";
       
       const modelMessage: Message = { role: 'model', content: modelContent, timestamp: Date.now() };
       setMessages(prev => [...prev, modelMessage]);

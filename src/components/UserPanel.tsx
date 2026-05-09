@@ -2,9 +2,10 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   User, Sparkles, Hand, Dices, Eye, Compass, 
   ShieldCheck, Binary, Asterisk, Moon, MapIcon, 
-  Search, ChevronRight, Zap, Crown, Info
+  Search, ChevronRight, Zap, Crown, Info, Calendar
 } from "lucide-react";
 import { SpiritualUser } from "../types/spiritual";
+import { getWeekDay } from "../lib/spiritualUtils";
 
 interface UserPanelProps {
   user: SpiritualUser | null;
@@ -59,8 +60,40 @@ export default function UserPanel({ user, onSelectConsultation }: UserPanelProps
           <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-[#0a0a0c] rounded-full" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] uppercase tracking-widest text-amber-500 font-black italic">Bem-vindo, Buscador</p>
+          <p className="text-[10px] uppercase tracking-widest text-amber-500 font-black italic">
+            {user.sign ? `${user.sign}` : 'Buscador das Estrelas'}
+          </p>
           <h2 className="text-xl font-serif text-white truncate italic">{user.displayName}</h2>
+          {user.birthDate && (
+            <div className="mt-2 space-y-1">
+              <p className="text-[9px] text-white/30 uppercase tracking-widest flex items-center gap-1.5">
+                <Calendar size={10} className="text-amber-500/50" />
+                {getWeekDay(user.birthDate)}, {new Date(user.birthDate).toLocaleDateString('pt-BR')} às {user.birthTime}
+              </p>
+              <div className="flex flex-wrap gap-2 pt-2">
+                {user.regentOdu && (
+                  <span className="px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] text-amber-500 font-bold uppercase tracking-wider">
+                    Odu {user.regentOdu.number}: {user.regentOdu.name}
+                  </span>
+                )}
+                {user.lifePathNumber && (
+                  <span className="px-2 py-1 bg-blue-500/10 border border-blue-500/20 rounded text-[8px] text-blue-400 font-bold uppercase tracking-wider">
+                    Destino {user.lifePathNumber}
+                  </span>
+                )}
+                {user.nameNumber && (
+                  <span className="px-2 py-1 bg-purple-500/10 border border-purple-500/20 rounded text-[8px] text-purple-400 font-bold uppercase tracking-wider">
+                    Alma {user.nameNumber}
+                  </span>
+                )}
+                {user.spiritualElement && (
+                  <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded text-[8px] text-emerald-400 font-bold uppercase tracking-wider">
+                    Elemento {user.spiritualElement}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -78,7 +111,11 @@ export default function UserPanel({ user, onSelectConsultation }: UserPanelProps
             <span className="text-[8px] uppercase tracking-widest text-white/30 font-bold group-hover:text-amber-500 transition-colors">Energia Viva</span>
             <div className="flex items-center gap-2">
               <Zap className="text-amber-500 fill-amber-500/20" size={14} />
-              <span className="text-xs font-black text-white/90">{user.credits} CR</span>
+              <span className="text-xs font-black text-white/90">
+                {user.plan === 'free' 
+                  ? `${Math.max(0, 50 - (user.freeQueriesUsed || 0))} Livre` 
+                  : `${user.credits} CR`}
+              </span>
             </div>
           </div>
         </div>

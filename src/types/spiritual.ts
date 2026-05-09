@@ -10,6 +10,10 @@ export type SpiritualUser = {
   birthDate?: string;
   birthTime?: string;
   sign?: string;
+  lifePathNumber?: number;
+  nameNumber?: number;
+  regentOdu?: { number: number, name: string };
+  spiritualElement?: string;
   spiritualLevel?: number;
   createdAt: string;
 };

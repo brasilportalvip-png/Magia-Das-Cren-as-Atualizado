@@ -4,6 +4,7 @@ import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import Stripe from "stripe";
 import admin from "firebase-admin";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 dotenv.config();
 
@@ -23,6 +24,8 @@ if (!admin.apps.length) {
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-01-27" as any })
   : null;
+
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
 async function startServer() {
   const app = express();
@@ -85,6 +88,30 @@ async function startServer() {
   });
 
   app.use(express.json());
+
+  // Gemini Chat Route
+  app.post("/api/chat", async (req, res) => {
+    if (!genAI) {
+      return res.status(500).json({ error: "Gemini API key not configured on server" });
+    }
+
+    try {
+      const { contents, systemInstruction } = req.body;
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+        systemInstruction
+      });
+
+      const result = await model.generateContent({ contents });
+      const response = await result.response;
+      const text = response.text();
+
+      res.json({ text });
+    } catch (error: any) {
+      console.error("Gemini Server Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   // API Routes
   app.get("/api/health", (req, res) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
-import { doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
+import { doc, setDoc, onSnapshot, getDoc, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, X, ChevronLeft, UserCircle, Zap, Crown, Loader2, LogOut, User } from "lucide-react";
@@ -33,9 +33,26 @@ export default function App() {
         
         const unsubDoc = onSnapshot(userRef, (snapshot) => {
           if (snapshot.exists()) {
-            setUser(snapshot.data() as SpiritualUser);
+            const userData = snapshot.data() as SpiritualUser;
+            
+            // ADMIN GIFT: Grant 1000 credits and reset free queries to the owner for testing
+            if (authUser.email === 'brasilportalvip@gmail.com') {
+              if ((userData.credits || 0) < 1000 || (userData.freeQueriesUsed || 0) > 0) {
+                updateDoc(userRef, { 
+                  credits: 1000,
+                  freeQueriesUsed: 0
+                }).catch(console.error);
+              }
+            }
+
+            setUser(userData);
+            
+            // Re-open auth modal if profile is incomplete
+            if (!userData.birthDate || !userData.birthTime || !userData.displayName) {
+              setShowAuth(true);
+            }
           } else {
-            // Initialize user if not found (fallback)
+            // Initialize user only once
             const newUser: SpiritualUser = {
               uid: authUser.uid,
               displayName: authUser.displayName || "Buscador",
@@ -47,7 +64,9 @@ export default function App() {
               spiritualLevel: 1,
               createdAt: new Date().toISOString()
             };
-            setDoc(userRef, newUser, { merge: true }).catch(err => {
+            setDoc(userRef, newUser, { merge: true }).then(() => {
+              setShowAuth(true); // Ask for birth info for new users
+            }).catch(err => {
               handleFirestoreError(err, OperationType.WRITE, `users/${authUser.uid}`);
             });
           }
@@ -74,25 +93,30 @@ export default function App() {
 
     const userRef = doc(db, "users", user.uid);
     
+    // Check for essential spiritual data
+    if (!user.birthDate || !user.birthTime || !user.displayName) {
+      setShowAuth(true);
+      throw new Error("Dados de nascimento essenciais ausentes");
+    }
+    
     try {
-      if (user.plan === 'free') {
-        if (user.freeQueriesUsed >= 1) {
+      if ((user.credits || 0) >= amount) {
+        // User has paid credits, prioritize them
+        await updateDoc(userRef, { 
+          credits: Math.max(0, (user.credits || 0) - amount) 
+        });
+      } else if (user.plan === 'free') {
+        if ((user.freeQueriesUsed || 0) >= 50) {
           setShowFreeLimit(true);
           throw new Error("Ciclo gratuito atingido");
         }
-        await setDoc(userRef, { 
+        await updateDoc(userRef, { 
           freeQueriesUsed: (user.freeQueriesUsed || 0) + 1,
           lastFreeQueryAt: new Date().toISOString() 
-        }, { merge: true });
+        });
       } else {
-        // Logic for PRO users
-        if (user.credits < amount) {
-          setShowPackages(true);
-          throw new Error("Créditos insuficientes");
-        }
-        await setDoc(userRef, { 
-          credits: Math.max(0, user.credits - amount) 
-        }, { merge: true });
+        setShowPackages(true);
+        throw new Error("Créditos insuficientes");
       }
     } catch (err) {
       if (err instanceof Error && (err.message === "Ciclo gratuito atingido" || err.message === "Créditos insuficientes")) throw err;
@@ -154,7 +178,9 @@ export default function App() {
                     <div className="flex flex-col items-end">
                         <span className="text-[8px] lg:text-[10px] uppercase tracking-widest text-amber-500 font-bold italic">Energia Vital</span>
                         <span className="text-sm lg:text-lg font-mono text-amber-200">
-                           {user.plan === 'free' ? `${user.freeQueriesUsed}/1 Free` : `${user.credits} CR`}
+                           {user.plan === 'free' 
+                             ? `${Math.max(0, 50 - (user.freeQueriesUsed || 0))} Consultas Grátis` 
+                             : `${user.credits} CR`}
                         </span>
                     </div>
                     <div className="flex gap-2 lg:gap-4 items-center">
