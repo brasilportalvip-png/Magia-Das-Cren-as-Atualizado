@@ -10,6 +10,7 @@ import { getWeekDay } from "../lib/spiritualUtils";
 interface UserPanelProps {
   user: SpiritualUser | null;
   onSelectConsultation?: (tool: string) => void;
+  advice?: string;
 }
 
 const MENU_CONSULTAS = [
@@ -23,7 +24,7 @@ const MENU_CONSULTAS = [
   { label: "Anjo Guardião", icon: <Search size={18} />, color: "text-yellow-400", glow: "shadow-[0_0_20px_rgba(234,179,8,0.3)]", gradient: "from-yellow-600/20 to-yellow-900/30", border: "border-yellow-500/30" },
 ];
 
-export default function UserPanel({ user, onSelectConsultation }: UserPanelProps) {
+export default function UserPanel({ user, onSelectConsultation, advice }: UserPanelProps) {
   if (!user) {
     return (
       <div className="h-full bg-white/5 backdrop-blur-3xl rounded-[32px] border border-white/10 p-8 flex flex-col items-center justify-center text-center space-y-8 shadow-2xl">
@@ -131,7 +132,7 @@ export default function UserPanel({ user, onSelectConsultation }: UserPanelProps
                 <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shadow-[0_0_10px_#f59e0b]" />
               </div>
               <p className="text-sm font-serif italic text-amber-50 leading-relaxed line-clamp-4">
-                "As correntes do destino fluem em sua direção. Mantenha os olhos da alma abertos, pois a resposta que busca está no silêncio da sua respiração."
+                {advice || "\"As correntes do destino fluem em sua direção. Mantenha os olhos da alma abertos, pois a resposta que busca está no silêncio da sua respiração.\""}
               </p>
               <div className="w-full h-px bg-white/5" />
               <button 

@@ -92,14 +92,23 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
     try {
       await onCreditUse(amount); 
 
-      // Build history excluding the very first model-only welcome message if it's the only one
-      // or ensuring it starts with user to comply with API expectations
-      const conversationHistory = messages
-        .filter((m, i) => !(i === 0 && m.role === 'model'))
-        .map(m => ({
-          role: m.role === 'user' ? 'user' : 'model',
-          parts: [{ text: m.content }]
-        }));
+      // Build history ensuring alternating roles user/model
+      const conversationHistory = [];
+      let lastRole = null;
+
+      for (let i = 0; i < messages.length; i++) {
+        const m = messages[i];
+        if (i === 0 && m.role === 'model') continue; // Skip initial welcome
+
+        const currentRole = m.role === 'user' ? 'user' : 'model';
+        if (currentRole !== lastRole) {
+          conversationHistory.push({
+            role: currentRole,
+            parts: [{ text: m.content }]
+          });
+          lastRole = currentRole;
+        }
+      }
 
       // Add current message to contents
       const contents = [

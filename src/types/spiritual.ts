@@ -15,6 +15,7 @@ export type SpiritualUser = {
   regentOdu?: { number: number, name: string };
   spiritualElement?: string;
   spiritualLevel?: number;
+  lastAdvice?: string;
   createdAt: string;
 };
 

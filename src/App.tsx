@@ -231,6 +231,7 @@ export default function App() {
                   <UserPanel 
                     user={user} 
                     onSelectConsultation={setActiveTab} 
+                    advice={user?.lastAdvice || currentAdvice}
                   />
                 </div>
             </>
