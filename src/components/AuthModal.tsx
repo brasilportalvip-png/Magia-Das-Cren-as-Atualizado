@@ -28,8 +28,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
-  if (!isOpen) return null;
-
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
@@ -128,12 +126,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0, y: 20 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-[#0a0a0c] border border-amber-500/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(245,158,11,0.15)]"
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-4 overflow-y-auto bg-black/90">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            className="w-full max-w-md bg-[#0a0a0c] border border-amber-500/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(245,158,11,0.15)] my-auto"
+          >
         <div className="p-8 space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-serif italic text-amber-100 flex items-center gap-2">
@@ -261,5 +262,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         </div>
       </motion.div>
     </div>
-  );
+  )}
+</AnimatePresence>
+);
 }
