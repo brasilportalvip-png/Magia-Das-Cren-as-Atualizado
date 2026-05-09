@@ -90,7 +90,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             createdAt: new Date().toISOString()
           }, { merge: true });
         } catch (err) {
-          handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`);
+          // If Firestore fails, we still want to close the modal because auth succeeded
+          console.error("Firestore init error:", err);
         }
         onClose();
       } else {
@@ -98,7 +99,29 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         setSuccessMsg('O sopro do destino enviou um link de recuperação para seu e-mail.');
       }
     } catch (err: any) {
-      setError(err.message === 'Firebase: Error (auth/user-not-found).' ? 'Conta não encontrada.' : err.message);
+      let message = 'Ocorreu um erro inesperado. Tente novamente.';
+      
+      const errorCode = err.code || '';
+      if (errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password' || errorCode === 'auth/invalid-credential') {
+        message = 'E-mail ou senha incorretos.';
+      } else if (errorCode === 'auth/email-already-in-use') {
+        message = 'Este e-mail já está em uso.';
+      } else if (errorCode === 'auth/weak-password') {
+        message = 'A senha deve ter pelo menos 6 caracteres.';
+      } else if (errorCode === 'auth/operation-not-allowed') {
+        message = 'O cadastro por e-mail ainda não foi ativado no painel do Firebase.';
+      } else if (err.message && err.message.includes('auth/invalid-email')) {
+        message = 'E-mail inválido.';
+      } else if (err.message && err.message.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(err.message);
+          message = `Erro no banco de dados: ${parsed.error}`;
+        } catch {
+          message = err.message;
+        }
+      }
+
+      setError(message);
     } finally {
       setLoading(false);
     }
