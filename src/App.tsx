@@ -35,12 +35,19 @@ export default function App() {
           if (snapshot.exists()) {
             const userData = snapshot.data() as SpiritualUser;
             
+            // MIGRATION / INITIALIZATION for existing users who might have 0 credits
+            if (userData.plan === 'free' && (userData.credits === undefined || userData.credits === 0) && (userData.freeRefillsCount || 0) === 0) {
+                 updateDoc(userRef, { 
+                   credits: 30,
+                   freeRefillsCount: 0 // Reset refills count for 30 start
+                 }).catch(console.error);
+            }
+
             // ADMIN GIFT: Grant 1000 credits and reset free queries to the owner for testing
             if (authUser.email === 'brasilportalvip@gmail.com') {
-              if ((userData.credits || 0) < 1000 || (userData.freeQueriesUsed || 0) > 0) {
+              if ((userData.credits || 0) < 1000) {
                 updateDoc(userRef, { 
-                  credits: 1000,
-                  freeQueriesUsed: 0
+                  credits: 1000
                 }).catch(console.error);
               }
             }
@@ -186,9 +193,7 @@ export default function App() {
                     <div className="flex flex-col items-end">
                         <span className="text-[8px] lg:text-[10px] uppercase tracking-widest text-amber-500 font-bold italic">Energia Vital</span>
                         <span className="text-sm lg:text-lg font-mono text-amber-200">
-                           {user.plan === 'free' 
-                             ? `${Math.max(0, 50 - (user.freeQueriesUsed || 0))} Consultas Grátis` 
-                             : `${user.credits} CR`}
+                           {user.credits || 0} CR
                         </span>
                     </div>
                     <div className="flex gap-2 lg:gap-4 items-center">

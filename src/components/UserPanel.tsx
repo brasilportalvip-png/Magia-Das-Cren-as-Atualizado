@@ -123,9 +123,7 @@ export default function UserPanel({ user, onSelectConsultation, advice }: UserPa
             <div className="flex items-center gap-2">
               <Zap className="text-amber-500 fill-amber-500/20" size={14} />
               <span className="text-xs font-black text-white/90">
-                {user.plan === 'free' 
-                  ? `${Math.max(0, 50 - (user.freeQueriesUsed || 0))} Livre` 
-                  : `${user.credits} CR`}
+                {user.credits || 0} CR
               </span>
             </div>
           </div>

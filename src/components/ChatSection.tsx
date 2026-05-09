@@ -84,12 +84,7 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
     else if (lowerText.includes("espiritual")) amount = 2;
     else if (lowerText.includes("família")) amount = 2;
 
-    if (user.plan === 'free') {
-      if (user.freeQueriesUsed >= 50) {
-        setMessages(prev => [...prev, { role: 'model', content: "Suas energias gratuitas para este ciclo se esgotaram. Pablo convida você a desequilibrar a balança com um de nossos pacotes espirituais.", timestamp: Date.now() }]);
-        return;
-      }
-    } else if (user.credits < amount) {
+    if ((user.credits || 0) < amount) {
       setMessages(prev => [...prev, { role: 'model', content: "Suas energias atuais são insuficientes para esta consulta profunda. Pablo sugere que você recarregue sua Energia Vital.", timestamp: Date.now() }]);
       return;
     }
