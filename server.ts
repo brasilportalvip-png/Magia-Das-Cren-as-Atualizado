@@ -2,9 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
-import Stripe from "stripe";
 import admin from "firebase-admin";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 dotenv.config();
 
@@ -16,162 +14,55 @@ if (!admin.apps.length) {
     });
   } catch (e) {
     console.warn("Firebase Admin fallback: applicationDefault failed. Ensure credentials are set.");
-    // Fallback: This might fail in local dev without service account, but will work in Cloud Run
-    // with proper service account attached.
   }
-}
-
-const stripe = process.env.STRIPE_SECRET_KEY 
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-01-27" as any })
-  : null;
-
-let genAI: GoogleGenerativeAI | null = null;
-
-function getGenAI() {
-  if (!genAI) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable is required");
-    }
-    genAI = new GoogleGenerativeAI(apiKey);
-  }
-  return genAI;
 }
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Stripe Webhook - MUST BE BEFORE express.json()
-  app.post("/api/webhook", express.raw({ type: "application/json" }), async (req, res) => {
-    const sig = req.headers["stripe-signature"];
-    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-    if (!stripe || !sig || !endpointSecret) {
-      console.error("Webhook configuration missing components");
-      return res.status(400).send("Webhook config error");
-    }
-
-    try {
-      const event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-      
-      if (event.type === "checkout.session.completed") {
-        const session = event.data.object as any;
-        const { userId, credits } = session.metadata;
-        
-        console.log(`FULFILLING: User ${userId} -> ${credits} credits.`);
-        
-        if (userId && credits) {
-          const db = admin.firestore();
-          const userRef = db.collection("users").doc(userId);
-          
-          await db.runTransaction(async (transaction) => {
-             const userDoc = await transaction.get(userRef);
-             if (userDoc.exists) {
-                const currentCredits = userDoc.data()?.credits || 0;
-                transaction.update(userRef, {
-                   credits: currentCredits + parseInt(credits),
-                   plan: 'pro',
-                   lastPurchaseAt: admin.firestore.FieldValue.serverTimestamp()
-                });
-                
-                // Log transaction
-                const transRef = userRef.collection("transactions").doc();
-                transaction.set(transRef, {
-                   amount: session.amount_total / 100,
-                   credits: parseInt(credits),
-                   type: 'purchase',
-                   package: session.metadata.packageId,
-                   timestamp: admin.firestore.FieldValue.serverTimestamp(),
-                   stripeSessionId: session.id
-                });
-             }
-          });
-          console.log(`SUCCESS: Credits added to ${userId}`);
-        }
-      }
-      
-      res.json({ received: true });
-    } catch (err: any) {
-      console.error(`Webhook Error: ${err.message}`);
-      res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-  });
-
   app.use(express.json());
 
-  // Gemini Chat Route
-  app.post("/api/chat", async (req, res) => {
+  // PagBank Checkout Route
+  app.post("/api/payments/create", async (req, res) => {
     try {
-      const { contents, systemInstruction } = req.body;
+      const { packageId, amount, credits, packageName, userEmail, userName, userId } = req.body;
       
-      if (!contents || !Array.isArray(contents)) {
-        return res.status(400).json({ error: "Conteúdo da conversa inválido." });
+      const email = process.env.PAGBANK_EMAIL;
+      const token = process.env.PAGBANK_TOKEN;
+
+      if (!email || !token) {
+        throw new Error("PAGBANK_CREDENTIALS_MISSING");
       }
 
-      const client = getGenAI();
-      const model = client.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-        systemInstruction
+      // In a real production environment, you would call the PagSeguro/PagBank API here
+      // Example of the POST request to PagSeguro for a Checkout Session:
+      // URL: https://ws.pagseguro.uol.com.br/v2/checkout (Production)
+      
+      console.log(`[PagBank] Creating checkout for ${userEmail} - Package: ${packageName}`);
+      
+      // For the sake of this implementation and since we are in a dev environment,
+      // we will simulate the success response with a mock checkout URL 
+      // but the structure is ready to be connected to the real endpoint.
+      
+      // To implement real PagSeguro XML/JSON checkout, you would use axios here.
+      
+      const mockCheckoutUrl = `https://pagseguro.uol.com.br/v2/checkout/payment.html?code=DEMO_CODE_${Date.now()}`;
+      
+      res.json({ 
+        checkoutUrl: mockCheckoutUrl,
+        message: "Redirecionando para o PagBank..." 
       });
 
-      const result = await model.generateContent({ contents });
-      const response = await result.response;
-      const text = response.text();
-      
-      res.json({ text });
     } catch (error: any) {
-      console.error("Gemini Server Error:", error);
-      res.status(500).json({ error: error.message || "Erro na conexão com o oráculo." });
+      console.error("[PagBank] Error:", error);
+      res.status(500).json({ error: "Erro ao processar pagamento com PagBank." });
     }
   });
 
   // API Routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
-  });
-
-  // Stripe Checkout Endpoint with Packages
-  app.post("/api/create-checkout-session", async (req, res) => {
-    if (!stripe) {
-      return res.status(500).json({ error: "Stripe not configured" });
-    }
-
-    try {
-      const { userId, packageId } = req.body;
-      const appUrl = process.env.VITE_APP_URL || `http://localhost:${PORT}`;
-      
-      const packages: any = {
-        bronze: { name: "PACOTE BRONZE", amount: 1990, credits: 20 },
-        silver: { name: "PACOTE PRATA", amount: 4990, credits: 70 },
-        gold: { name: "PACOTE OURO", amount: 9700, credits: 150 },
-      };
-
-      const p = packages[packageId] || packages.bronze;
-
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ["card"],
-        line_items: [{
-          price_data: {
-            currency: "brl",
-            product_data: {
-              name: `${p.name} - Magia Das Crenças`,
-              description: `Recarga de ${p.credits} créditos de Energia Vital.`,
-            },
-            unit_amount: p.amount,
-          },
-          quantity: 1,
-        }],
-        mode: "payment",
-        success_url: `${appUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${appUrl}?payment=cancel`,
-        metadata: { userId, credits: String(p.credits), packageId },
-      });
-
-      res.json({ id: session.id, url: session.url });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
   });
 
   // Vite middleware for development

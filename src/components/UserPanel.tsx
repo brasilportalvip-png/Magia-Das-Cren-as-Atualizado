@@ -92,6 +92,16 @@ export default function UserPanel({ user, onSelectConsultation, advice }: UserPa
                     Elemento {user.spiritualElement}
                   </span>
                 )}
+                {user.guardianAngel && (
+                  <span className="px-2 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded text-[8px] text-yellow-400 font-bold uppercase tracking-wider">
+                    Anjo {user.guardianAngel}
+                  </span>
+                )}
+                {user.planetaryHour && (
+                  <span className="px-2 py-1 bg-cyan-500/10 border border-cyan-500/20 rounded text-[8px] text-cyan-400 font-bold uppercase tracking-wider">
+                    Hora de {user.planetaryHour}
+                  </span>
+                )}
               </div>
             </div>
           )}

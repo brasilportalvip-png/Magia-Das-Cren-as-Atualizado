@@ -6,6 +6,8 @@ export type SpiritualUser = {
   credits: number;
   plan: 'free' | 'pro';
   freeQueriesUsed: number;
+  freeRefillsCount?: number;
+  lastFreeRefillAt?: string;
   lastFreeQueryAt?: string;
   birthDate?: string;
   birthTime?: string;
@@ -13,6 +15,8 @@ export type SpiritualUser = {
   lifePathNumber?: number;
   nameNumber?: number;
   regentOdu?: { number: number, name: string };
+  guardianAngel?: string;
+  planetaryHour?: string;
   spiritualElement?: string;
   spiritualLevel?: number;
   lastAdvice?: string;
@@ -37,29 +41,20 @@ export type CreditPackage = {
 
 export const SPIRITUAL_PACKAGES: CreditPackage[] = [
   {
-    id: 'bronze',
-    name: 'PACOTE BRONZE',
+    id: 'standard',
+    name: 'ESSÊNCIA ESPIRITUAL',
     price: 19.90,
-    credits: 20,
-    description: 'Ideal para consultas rápidas e pontuais.',
-    color: 'from-orange-400 to-amber-700',
-    glow: 'shadow-orange-500/20'
-  },
-  {
-    id: 'silver',
-    name: 'PACOTE PRATA',
-    price: 49.90,
     credits: 70,
-    description: 'Equilíbrio perfeito para seu autoconhecimento.',
-    color: 'from-slate-300 to-slate-500',
-    glow: 'shadow-slate-400/20'
+    description: 'Um despertar profundo com o Cigano Pablo.',
+    color: 'from-amber-400 to-amber-700',
+    glow: 'shadow-amber-500/20'
   },
   {
-    id: 'gold',
-    name: 'PACOTE OURO',
-    price: 97.00,
+    id: 'master',
+    name: 'MESTRIA DO ORÁCULO',
+    price: 80.00,
     credits: 150,
-    description: 'Acesso total e profundo à sabedoria do Cigano.',
+    description: 'Acesso total e ilimitado à sabedoria ancestral.',
     color: 'from-amber-300 to-yellow-600',
     glow: 'shadow-yellow-500/40'
   }

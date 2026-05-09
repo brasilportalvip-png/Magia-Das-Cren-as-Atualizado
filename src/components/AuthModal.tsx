@@ -14,7 +14,15 @@ import {
 } from 'firebase/auth';
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { getZodiacSign, calculateLifePath, calculateRegentOdu, getSpiritualElement, calculateNameNumber } from '../lib/spiritualUtils';
+import { 
+  getZodiacSign, 
+  calculateLifePath, 
+  calculateRegentOdu, 
+  getSpiritualElement, 
+  calculateNameNumber,
+  getGuardianAngel,
+  getPlanetaryHour
+} from '../lib/spiritualUtils';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -90,6 +98,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       const nameNumber = calculateNameNumber(name);
       const regentOdu = calculateRegentOdu(birthDate);
       const spiritualElement = getSpiritualElement(sign);
+      const guardianAngel = getGuardianAngel(birthDate);
+      const planetaryHour = getPlanetaryHour(birthTime);
 
       const userDocRef = doc(db, 'users', uid);
       await setDoc(userDocRef, {
@@ -103,9 +113,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         nameNumber,
         regentOdu,
         spiritualElement,
-        credits: 0,
+        guardianAngel,
+        planetaryHour,
+        credits: 30, // Updated to 30 as requested
         plan: 'free',
         freeQueriesUsed: 0,
+        freeRefillsCount: 0,
         spiritualLevel: 1,
         createdAt: new Date().toISOString()
       }, { merge: true });
@@ -138,6 +151,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         const nameNumber = calculateNameNumber(name);
         const regentOdu = calculateRegentOdu(birthDate);
         const spiritualElement = getSpiritualElement(sign);
+        const guardianAngel = getGuardianAngel(birthDate);
+        const planetaryHour = getPlanetaryHour(birthTime);
 
         try {
           await setDoc(userDocRef, {
@@ -151,9 +166,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             nameNumber,
             regentOdu,
             spiritualElement,
-            credits: 0,
+            guardianAngel,
+            planetaryHour,
+            credits: 30, // Updated to 30 as requested
             plan: 'free',
             freeQueriesUsed: 0,
+            freeRefillsCount: 0,
             spiritualLevel: 1,
             createdAt: new Date().toISOString()
           }, { merge: true });

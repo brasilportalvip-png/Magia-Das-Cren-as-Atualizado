@@ -105,3 +105,22 @@ export function calculateNameNumber(name: string): number {
   }
   return sum;
 }
+
+export function getGuardianAngel(dateStr: string): string {
+  if (!dateStr) return "Serafim";
+  const num = calculateLifePath(dateStr);
+  const angels = [
+    "Metatron", "Jofiel", "Samuel", "Gabriel", 
+    "Rafael", "Uriel", "Cassiel", "Miguel", "Haniel", "Raziel"
+  ];
+  return angels[num % angels.length];
+}
+
+export function getPlanetaryHour(timeStr: string): string {
+  if (!timeStr) return "Desconhecido";
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const totalMinutes = (hours * 60) + minutes;
+  const planets = ["Saturno", "Júpiter", "Marte", "Sol", "Vênus", "Mercúrio", "Lua"];
+  const index = Math.floor((totalMinutes / 120) % 7);
+  return planets[index];
+}

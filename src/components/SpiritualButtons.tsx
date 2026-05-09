@@ -15,14 +15,14 @@ import {
 } from "lucide-react";
 
 const SPIRITUAL_TOOLS = [
-  { label: "Tarot", icon: <Hand size={24} />, color: "text-amber-400", glow: "group-hover:shadow-[0_0_35px_rgba(245,158,11,1)]", bg: "group-hover:bg-amber-500", border: "border-amber-500/50" },
-  { label: "Búzios", icon: <Dices size={24} />, color: "text-emerald-400", glow: "group-hover:shadow-[0_0_35px_rgba(16,185,129,1)]", bg: "group-hover:bg-emerald-500", border: "border-emerald-500/50" },
-  { label: "Ifá", icon: <Eye size={24} />, color: "text-cyan-400", glow: "group-hover:shadow-[0_0_35px_rgba(6,182,212,1)]", bg: "group-hover:bg-cyan-500", border: "border-cyan-500/50" },
-  { label: "Odu", icon: <Compass size={24} />, color: "text-purple-400", glow: "group-hover:shadow-[0_0_35px_rgba(168,85,247,1)]", bg: "group-hover:bg-purple-500", border: "border-purple-500/50" },
-  { label: "Orixás", icon: <ShieldCheck size={24} />, color: "text-rose-400", glow: "group-hover:shadow-[0_0_35px_rgba(244,63,94,1)]", bg: "group-hover:bg-rose-500", border: "border-rose-500/50" },
-  { label: "Numerologia", icon: <Binary size={24} />, color: "text-blue-400", glow: "group-hover:shadow-[0_0_35px_rgba(59,130,246,1)]", bg: "group-hover:bg-blue-500", border: "border-blue-500/50" },
-  { label: "Mapa Astral", icon: <MapIcon size={24} />, color: "text-pink-400", glow: "group-hover:shadow-[0_0_35px_rgba(236,72,153,1)]", bg: "group-hover:bg-pink-500", border: "border-pink-500/50" },
-  { label: "Anjo Guardião", icon: <Search size={24} />, color: "text-yellow-400", glow: "group-hover:shadow-[0_0_35px_rgba(234,179,8,1)]", bg: "group-hover:bg-yellow-500", border: "border-yellow-500/50" },
+  { label: "Tarot", icon: <Hand size={28} />, color: "text-amber-400", glow: "group-hover:shadow-[0_0_45px_rgba(245,158,11,1)]", bg: "group-hover:bg-amber-500", border: "border-amber-500" },
+  { label: "Búzios", icon: <Dices size={28} />, color: "text-emerald-400", glow: "group-hover:shadow-[0_0_45px_rgba(16,185,129,1)]", bg: "group-hover:bg-emerald-500", border: "border-emerald-500" },
+  { label: "Ifá", icon: <Eye size={28} />, color: "text-cyan-400", glow: "group-hover:shadow-[0_0_45px_rgba(6,182,212,1)]", bg: "group-hover:bg-cyan-500", border: "border-cyan-500" },
+  { label: "Odu", icon: <Compass size={28} />, color: "text-purple-400", glow: "group-hover:shadow-[0_0_45px_rgba(168,85,247,1)]", bg: "group-hover:bg-purple-500", border: "border-purple-500" },
+  { label: "Orixás", icon: <ShieldCheck size={28} />, color: "text-rose-400", glow: "group-hover:shadow-[0_0_45px_rgba(244,63,94,1)]", bg: "group-hover:bg-rose-500", border: "border-rose-500" },
+  { label: "Numerologia", icon: <Binary size={28} />, color: "text-blue-400", glow: "group-hover:shadow-[0_0_45px_rgba(59,130,246,1)]", bg: "group-hover:bg-blue-500", border: "border-blue-500" },
+  { label: "Mapa Astral", icon: <MapIcon size={28} />, color: "text-pink-400", glow: "group-hover:shadow-[0_0_45px_rgba(236,72,153,1)]", bg: "group-hover:bg-pink-500", border: "border-pink-500" },
+  { label: "Anjo Guardião", icon: <Search size={28} />, color: "text-yellow-400", glow: "group-hover:shadow-[0_0_45px_rgba(234,179,8,1)]", bg: "group-hover:bg-yellow-500", border: "border-yellow-500" },
 ];
 
 interface SpiritualButtonsProps {

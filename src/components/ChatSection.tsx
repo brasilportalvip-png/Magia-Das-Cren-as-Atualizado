@@ -73,6 +73,16 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
     else if (lowerText.includes("búzios")) amount = 4;
     else if (lowerText.includes("ifá")) amount = 4;
     else if (lowerText.includes("odu")) amount = 2;
+    else if (lowerText.includes("orixás")) amount = 4;
+    else if (lowerText.includes("numerologia")) amount = 2;
+    else if (lowerText.includes("anjo guardião")) amount = 2;
+    // Themes are usually cheaper consultations or part of general
+    else if (lowerText.includes("amor")) amount = 2;
+    else if (lowerText.includes("dinheiro")) amount = 2;
+    else if (lowerText.includes("saúde")) amount = 2;
+    else if (lowerText.includes("trabalho")) amount = 2;
+    else if (lowerText.includes("espiritual")) amount = 2;
+    else if (lowerText.includes("família")) amount = 2;
 
     if (user.plan === 'free') {
       if (user.freeQueriesUsed >= 50) {
@@ -133,19 +143,9 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
           MEMÓRIA PESSOAL (CONSIDERAR):
           Utilize a Data, Hora e Nome para realizar os cálculos tradicionais necessários para a resposta. Trate o usuário pelo nome. Sua voz deve ser mística, acolhedora e sábia.`;
 
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents, systemInstruction })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const modelContent = data.text || "As estrelas estão em silêncio momentâneo... (Erro de resposta)";
+      // NEW: Using frontend geminiService
+      const { generateSpiritualResponse } = await import("../services/geminiService");
+      const modelContent = await generateSpiritualResponse(contents, systemInstruction);
       
       const modelMessage: Message = { role: 'model', content: modelContent, timestamp: Date.now() };
       setMessages(prev => [...prev, modelMessage]);
@@ -184,11 +184,27 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
         }
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chat error:", error);
+      
+      let errorMessage = "As energias oscilaram... Pablo está recompondo o círculo. Por favor, tente perguntar novamente.";
+      
+      // If it's a known error from our API
+      if (error instanceof Error) {
+        if (error.message.includes("Ciclo gratuito atingido")) {
+           errorMessage = "Suas energias gratuitas para este ciclo se esgotaram. Pablo convida você a desequilibrar a balança com um de nossos pacotes espirituais.";
+        } else if (error.message.includes("Créditos insuficientes")) {
+           errorMessage = "Suas energias atuais são insuficientes para esta consulta profunda. Pablo sugere que você recarregue sua Energia Vital.";
+        } else if (error.message.includes("Dados de nascimento essenciais ausentes")) {
+           errorMessage = "Preciso de sua data e hora de nascimento para realizar os cálculos sagrados corretamente.";
+        } else {
+           errorMessage = error.message.length < 150 ? error.message : errorMessage;
+        }
+      }
+
       setMessages(prev => [...prev, { 
         role: 'model', 
-        content: "As energias oscilaram... Pablo está recompondo o círculo. Por favor, tente perguntar novamente.", 
+        content: errorMessage, 
         timestamp: Date.now() 
       }]);
     } finally {

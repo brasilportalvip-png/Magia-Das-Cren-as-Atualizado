@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, Zap, Shield, Crown, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { SPIRITUAL_PACKAGES, CreditPackage } from '../types/spiritual';
-import { loadStripe } from '@stripe/stripe-js';
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 interface CreditPackagesModalProps {
   isOpen: boolean;
@@ -20,23 +17,37 @@ export default function CreditPackagesModal({ isOpen, onClose, userId }: CreditP
   const handlePurchase = async (pkg: CreditPackage) => {
     if (!userId) return;
     setLoading(pkg.id);
+    
     try {
-      const response = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      // Create PagBank payment request
+      const response = await fetch('/api/payments/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId,
-          packageId: pkg.id
-        }),
+          userId: userId,
+          packageId: pkg.id,
+          amount: pkg.price,
+          credits: pkg.credits,
+          packageName: pkg.name
+        })
       });
-      
-      const session = await response.json();
-      if (session.url) {
-        window.location.href = session.url;
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao gerar link de pagamento');
       }
-    } catch (error) {
-      console.error("Purchase error:", error);
-      alert("Houve uma oscilação na rede astral. Tente novamente.");
+
+      // Redirect to PagBank Checkout
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        throw new Error('Url de checkout não recebida');
+      }
+
+    } catch (error: any) {
+      console.error('Purchase error:', error);
+      alert('O portal de pagamentos está em manutenção ritualística. Tente novamente mais tarde.');
     } finally {
       setLoading(null);
     }
@@ -72,23 +83,22 @@ export default function CreditPackagesModal({ isOpen, onClose, userId }: CreditP
                 whileHover={{ y: -10 }}
                 className={`relative group p-8 rounded-[32px] border-2 border-white/5 hover:border-white/20 transition-all flex flex-col h-full bg-gradient-to-b from-white/5 to-transparent ${pkg.glow}`}
               >
-                {pkg.id === 'gold' && (
+                {pkg.id === 'master' && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-amber-500/20">
                     <Crown size={12} fill="currentColor" /> Recomendado
                   </div>
                 )}
 
                 <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${pkg.color} flex items-center justify-center text-white mb-6 group-hover:scale-110 transition-transform duration-500 shadow-xl`}>
-                   {pkg.id === 'bronze' && <Zap size={32} fill="currentColor" />}
-                   {pkg.id === 'silver' && <Shield size={32} fill="currentColor" />}
-                   {pkg.id === 'gold' && <Crown size={32} fill="currentColor" />}
+                   {pkg.id === 'standard' && <Zap size={32} fill="currentColor" />}
+                   {pkg.id === 'master' && <Crown size={32} fill="currentColor" />}
                 </div>
 
                 <h3 className="text-xl font-black text-white uppercase tracking-widest mb-1 italic">{pkg.name}</h3>
                 <p className="text-white/40 text-xs mb-6 font-medium leading-relaxed">{pkg.description}</p>
 
                 <div className="flex items-baseline gap-2 mb-8">
-                  <span className="text-4xl font-serif italic text-white">R$ {pkg.price.toString().replace('.', ',')}</span>
+                  <span className="text-4xl font-serif italic text-white">R$ {pkg.price.toFixed(2).replace('.', ',')}</span>
                   <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Pagamento único</span>
                 </div>
 
@@ -99,16 +109,16 @@ export default function CreditPackagesModal({ isOpen, onClose, userId }: CreditP
                   </div>
                   <div className="flex items-center gap-2 text-white/50">
                     <CheckCircle2 size={16} className="text-white/20" />
-                    <span className="text-xs">Consultas Ilimitadas</span>
+                    <span className="text-xs">Consultas Avançadas</span>
                   </div>
                   <div className="flex items-center gap-2 text-white/50">
                     <CheckCircle2 size={16} className="text-white/20" />
-                    <span className="text-xs">Histórico Completo</span>
+                    <span className="text-xs">Histórico Astral</span>
                   </div>
-                  {pkg.id !== 'bronze' && (
+                  {pkg.id === 'master' && (
                     <div className="flex items-center gap-2 text-amber-400">
                       <Sparkles size={16} className="animate-pulse" />
-                      <span className="text-xs font-bold uppercase tracking-wider">Acesso Prioritário</span>
+                      <span className="text-xs font-bold uppercase tracking-wider">Acesso Prioritário Pablo</span>
                     </div>
                   )}
                 </div>
@@ -117,7 +127,7 @@ export default function CreditPackagesModal({ isOpen, onClose, userId }: CreditP
                   disabled={loading !== null}
                   onClick={() => handlePurchase(pkg)}
                   className={`w-full py-5 rounded-2xl text-black font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 relative overflow-hidden group/btn ${
-                    pkg.id === 'gold' ? 'bg-amber-500 scale-105 shadow-xl shadow-amber-500/20' : 'bg-white'
+                    pkg.id === 'master' ? 'bg-amber-500 scale-105 shadow-xl shadow-amber-500/20' : 'bg-white'
                   }`}
                 >
                   <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000 skew-x-12" />
@@ -139,7 +149,7 @@ export default function CreditPackagesModal({ isOpen, onClose, userId }: CreditP
                "Ao investir em sua energia vital, você abre os canais da abundância e clareza para seu destino."
              </p>
              <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-black">
-               Pagamento seguro via Stripe • Processamento instantâneo
+               Pagamento seguro via PagBank • Processamento instantâneo
              </p>
           </div>
         </div>

@@ -46,6 +46,23 @@ export default function App() {
             }
 
             setUser(userData);
+
+            // AUTO-REFILL LOGIC (30 credits every 48h, max 2 times)
+            if (userData.plan === 'free') {
+              const now = new Date();
+              const lastRefill = userData.lastFreeRefillAt ? new Date(userData.lastFreeRefillAt) : new Date(userData.createdAt);
+              const diffMs = now.getTime() - lastRefill.getTime();
+              const diffHours = diffMs / (1000 * 60 * 60);
+              const refillsUsed = userData.freeRefillsCount || 0;
+
+              if (diffHours >= 48 && refillsUsed < 2 && userData.credits < 30) {
+                updateDoc(userRef, {
+                  credits: (userData.credits || 0) + 30,
+                  freeRefillsCount: refillsUsed + 1,
+                  lastFreeRefillAt: now.toISOString()
+                }).catch(console.error);
+              }
+            }
             
             // Re-open auth modal if profile is incomplete
             if (!userData.birthDate || !userData.birthTime || !userData.displayName) {
@@ -58,9 +75,10 @@ export default function App() {
               displayName: authUser.displayName || "Buscador",
               email: authUser.email || "",
               photoURL: authUser.photoURL || undefined,
-              credits: 0,
+              credits: 30, // Starts with 30 credits as requested
               plan: "free",
               freeQueriesUsed: 0,
+              freeRefillsCount: 0,
               spiritualLevel: 1,
               createdAt: new Date().toISOString()
             };
@@ -101,18 +119,8 @@ export default function App() {
     
     try {
       if ((user.credits || 0) >= amount) {
-        // User has paid credits, prioritize them
         await updateDoc(userRef, { 
           credits: Math.max(0, (user.credits || 0) - amount) 
-        });
-      } else if (user.plan === 'free') {
-        if ((user.freeQueriesUsed || 0) >= 50) {
-          setShowFreeLimit(true);
-          throw new Error("Ciclo gratuito atingido");
-        }
-        await updateDoc(userRef, { 
-          freeQueriesUsed: (user.freeQueriesUsed || 0) + 1,
-          lastFreeQueryAt: new Date().toISOString() 
         });
       } else {
         setShowPackages(true);
@@ -158,10 +166,10 @@ export default function App() {
             {activeTab !== "home" && (
                 <button 
                     onClick={() => setActiveTab("home")}
-                    className="px-4 py-2 lg:px-6 lg:py-3 rounded-2xl border-2 border-amber-500 text-amber-100 hover:bg-amber-500 hover:text-black transition-all flex items-center gap-2 lg:gap-3 backdrop-blur-xl shadow-[0_0_20px_rgba(245,158,11,0.2)] group"
+                    className="px-6 py-3 lg:px-8 lg:py-4 rounded-full border-2 border-amber-500 bg-black/60 text-amber-100 hover:bg-amber-500 hover:text-black transition-all flex items-center gap-3 lg:gap-4 backdrop-blur-3xl shadow-[0_0_30px_rgba(245,158,11,0.3)] hover:shadow-[0_0_50px_rgba(245,158,11,0.5)] group transform hover:scale-105"
                 >
-                    <ChevronLeft size={20} strokeWidth={4} />
-                    <span className="text-sm lg:text-lg font-black uppercase tracking-[0.2em] italic">Voltar</span>
+                    <ChevronLeft size={24} strokeWidth={4} className="group-hover:-translate-x-1 transition-transform" />
+                    <span className="text-base lg:text-xl font-black uppercase tracking-[0.3em] font-serif">Voltar ao Templo</span>
                 </button>
             )}
             <div className="flex items-center gap-3 lg:gap-4">
@@ -219,7 +227,13 @@ export default function App() {
                   <ChatSection 
                     user={user} 
                     onCreditUse={handleUseCredit} 
-                    onNewAdvice={setCurrentAdvice}
+                    onNewAdvice={async (snippet) => {
+                      setCurrentAdvice(snippet);
+                      if (user && user.uid && !user.uid.startsWith('guest')) {
+                        const userRef = doc(db, "users", user.uid);
+                        await updateDoc(userRef, { lastAdvice: snippet }).catch(console.error);
+                      }
+                    }}
                   />
                 </div>
 
@@ -242,7 +256,13 @@ export default function App() {
                         user={user} 
                         onCreditUse={(amt) => handleUseCredit(amt)} 
                         initialMessage={`Cigano Pablo, por favor, realize uma leitura de **${activeTab}** para mim agora.`}
-                        onNewAdvice={setCurrentAdvice}
+                        onNewAdvice={async (snippet) => {
+                          setCurrentAdvice(snippet);
+                          if (user && user.uid && !user.uid.startsWith('guest')) {
+                             const userRef = doc(db, "users", user.uid);
+                             await updateDoc(userRef, { lastAdvice: snippet }).catch(console.error);
+                          }
+                        }}
                         key={activeTab}
                     />
                 </div>
