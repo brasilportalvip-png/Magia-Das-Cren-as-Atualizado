@@ -22,86 +22,27 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [showPackages, setShowPackages] = useState(false);
   const [showFreeLimit, setShowFreeLimit] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("home");
   const [currentAdvice, setCurrentAdvice] = useState<string>("O universo ainda possui mensagens ocultas para você. Busque o saber através das ferramentas sagradas.");
 
+  const [uid, setUid] = useState<string | null>(null);
+
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (authUser) => {
-      if (authUser) {
-        // Listen to user data in Firestore
-        const userRef = doc(db, "users", authUser.uid);
-        
-        const unsubDoc = onSnapshot(userRef, (snapshot) => {
-          if (snapshot.exists()) {
-            const userData = snapshot.data() as SpiritualUser;
-            
-            // MIGRATION / INITIALIZATION for existing users who might have 0 credits
-            if (userData.plan === 'free' && (userData.credits === undefined || userData.credits === 0) && (userData.freeRefillsCount || 0) === 0) {
-                 updateDoc(userRef, { 
-                   credits: 30,
-                   freeRefillsCount: 0 // Reset refills count for 30 start
-                 }).catch(console.error);
-            }
+    // Handle payment success redirect parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment') === 'success') {
+      const credits = urlParams.get('credits');
+      setPaymentSuccess(credits);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Auto close success message after 10 seconds
+      setTimeout(() => setPaymentSuccess(null), 10000);
+    }
 
-            // ADMIN GIFT: Grant 1000 credits and reset free queries to the owner for testing
-            if (authUser.email === 'brasilportalvip@gmail.com') {
-              if ((userData.credits || 0) < 1000) {
-                updateDoc(userRef, { 
-                  credits: 1000
-                }).catch(console.error);
-              }
-            }
-
-            setUser(userData);
-
-            // AUTO-REFILL LOGIC (30 credits every 48h, max 2 times)
-            if (userData.plan === 'free') {
-              const now = new Date();
-              const lastRefill = userData.lastFreeRefillAt ? new Date(userData.lastFreeRefillAt) : new Date(userData.createdAt);
-              const diffMs = now.getTime() - lastRefill.getTime();
-              const diffHours = diffMs / (1000 * 60 * 60);
-              const refillsUsed = userData.freeRefillsCount || 0;
-
-              if (diffHours >= 48 && refillsUsed < 2 && userData.credits < 30) {
-                updateDoc(userRef, {
-                  credits: (userData.credits || 0) + 30,
-                  freeRefillsCount: refillsUsed + 1,
-                  lastFreeRefillAt: now.toISOString()
-                }).catch(console.error);
-              }
-            }
-            
-            // Re-open auth modal if profile is incomplete
-            if (!userData.birthDate || !userData.birthTime || !userData.displayName) {
-              setShowAuth(true);
-            }
-          } else {
-            // Initialize user only once
-            const newUser: SpiritualUser = {
-              uid: authUser.uid,
-              displayName: authUser.displayName || "Buscador",
-              email: authUser.email || "",
-              photoURL: authUser.photoURL || undefined,
-              credits: 30, // Starts with 30 credits as requested
-              plan: "free",
-              freeQueriesUsed: 0,
-              freeRefillsCount: 0,
-              spiritualLevel: 1,
-              createdAt: new Date().toISOString()
-            };
-            setDoc(userRef, newUser, { merge: true }).then(() => {
-              setShowAuth(true); // Ask for birth info for new users
-            }).catch(err => {
-              handleFirestoreError(err, OperationType.WRITE, `users/${authUser.uid}`);
-            });
-          }
-        }, (error) => {
-          handleFirestoreError(error, OperationType.GET, `users/${authUser.uid}`);
-        });
-        
-        setLoading(false);
-        return () => unsubDoc();
-      } else {
+    const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
+      setUid(authUser?.uid || null);
+      if (!authUser) {
         setUser(null);
         setLoading(false);
       }
@@ -109,6 +50,90 @@ export default function App() {
 
     return () => unsubscribeAuth();
   }, []);
+
+  useEffect(() => {
+    if (!uid) return;
+
+    // Listen to user data in Firestore
+    const userRef = doc(db, "users", uid);
+    
+    const unsubDoc = onSnapshot(userRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const userData = snapshot.data() as SpiritualUser;
+        
+        // MIGRATION / INITIALIZATION for existing users who might have 0 credits
+        if (userData.plan === 'free' && (userData.credits === undefined || userData.credits === 0) && (userData.freeRefillsCount || 0) === 0) {
+             updateDoc(userRef, { 
+               credits: 30,
+               freeRefillsCount: 0 // Reset refills count for 30 start
+             }).catch(console.error);
+        }
+
+        // ADMIN GIFT: Grant 1000 credits and reset free queries to the owner for testing
+        if (auth.currentUser?.email === 'brasilportalvip@gmail.com') {
+          if ((userData.credits || 0) < 1000) {
+            updateDoc(userRef, { 
+              credits: 1000
+            }).catch(console.error);
+          }
+        }
+
+        setUser(userData);
+
+        // AUTO-REFILL LOGIC (30 credits every 48h, max 2 times)
+        if (userData.plan === 'free') {
+          const now = new Date();
+          const lastRefill = userData.lastFreeRefillAt ? new Date(userData.lastFreeRefillAt) : new Date(userData.createdAt);
+          const diffMs = now.getTime() - lastRefill.getTime();
+          const diffHours = diffMs / (1000 * 60 * 60);
+          const refillsUsed = userData.freeRefillsCount || 0;
+
+          if (diffHours >= 48 && refillsUsed < 2 && userData.credits < 30) {
+            updateDoc(userRef, {
+              credits: (userData.credits || 0) + 30,
+              freeRefillsCount: refillsUsed + 1,
+              lastFreeRefillAt: now.toISOString()
+            }).catch(console.error);
+          }
+        }
+        
+        // Re-open auth modal if profile is incomplete
+        if (!userData.birthDate || !userData.birthTime || !userData.displayName) {
+          setShowAuth(true);
+        }
+      } else {
+        // Initialize user only once
+        const newUser: SpiritualUser = {
+          uid: uid,
+          displayName: auth.currentUser?.displayName || "Buscador",
+          email: auth.currentUser?.email || "",
+          photoURL: auth.currentUser?.photoURL || undefined,
+          credits: 30, // Starts with 30 credits as requested
+          plan: "free",
+          freeQueriesUsed: 0,
+          freeRefillsCount: 0,
+          spiritualLevel: 1,
+          createdAt: new Date().toISOString()
+        };
+        setDoc(userRef, newUser, { merge: true }).then(() => {
+          setShowAuth(true); // Ask for birth info for new users
+        }).catch(err => {
+          if (auth.currentUser) {
+            handleFirestoreError(err, OperationType.WRITE, `users/${uid}`);
+          }
+        });
+      }
+      setLoading(false);
+    }, (error) => {
+      // Classic leaky listener fix: Only report if we still have a user
+      if (auth.currentUser) {
+        handleFirestoreError(error, OperationType.GET, `users/${uid}`);
+      }
+    });
+
+    return () => unsubDoc();
+  }, [uid]);
+
 
   const handleUseCredit = async (amount: number = 1) => {
     if (!user) {
@@ -160,93 +185,90 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen lg:h-screen w-full bg-[#050505] text-white relative overflow-x-hidden lg:overflow-hidden flex flex-col font-sans select-none border-0">
+    <div className="min-h-screen lg:h-screen w-full bg-[#050505] text-white relative overflow-x-hidden lg:overflow-hidden flex flex-col font-sans select-none border-0 overflow-y-auto">
       {/* Background Layer */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
           <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-purple-900/10 blur-[150px] rounded-full" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-amber-900/10 blur-[150px] rounded-full" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_#050505_100%)]" />
       </div>
 
-      <header className="relative z-20 px-4 py-4 lg:px-8 lg:py-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5 backdrop-blur-xl bg-black/40">
-         <div className="flex items-center gap-4 lg:gap-6 min-h-[48px] lg:min-h-[64px] w-full sm:w-auto">
+      <header className="relative z-40 px-4 py-4 lg:px-8 lg:py-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5 backdrop-blur-xl bg-black/40 sticky top-0 shrink-0">
+         <div className="flex items-center gap-3 lg:gap-6 min-h-[40px] lg:min-h-[64px] w-full sm:w-auto">
             {activeTab !== "home" && (
                 <button 
                     onClick={() => setActiveTab("home")}
-                    className="px-6 py-3 lg:px-8 lg:py-4 rounded-full border-2 border-amber-500 bg-black/60 text-amber-100 hover:bg-amber-500 hover:text-black transition-all flex items-center gap-3 lg:gap-4 backdrop-blur-3xl shadow-[0_0_30px_rgba(245,158,11,0.3)] hover:shadow-[0_0_50px_rgba(245,158,11,0.5)] group transform hover:scale-105"
+                    className="p-3 lg:px-8 lg:py-4 rounded-xl lg:rounded-full border-2 border-amber-500 bg-black/60 text-amber-100 hover:bg-amber-500 hover:text-black transition-all flex items-center gap-2 lg:gap-4 backdrop-blur-3xl shadow-[0_0_30px_rgba(245,158,11,0.3)] group transform hover:scale-105"
                 >
-                    <ChevronLeft size={24} strokeWidth={4} className="group-hover:-translate-x-1 transition-transform" />
-                    <span className="text-base lg:text-xl font-black uppercase tracking-[0.3em] font-serif">Voltar ao Templo</span>
+                    <ChevronLeft size={20} strokeWidth={4} className="group-hover:-translate-x-1 transition-transform" />
+                    <span className="text-xs lg:text-xl font-black uppercase tracking-[0.2em] lg:tracking-[0.3em] font-serif hidden xs:block">Início</span>
                 </button>
             )}
-            <div className="flex items-center gap-3 lg:gap-4">
-              <div className="w-8 h-8 lg:w-12 lg:h-12 border-2 border-amber-500 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.4)]">
+            <div className="flex items-center gap-3 lg:gap-4 flex-1 sm:flex-none">
+              <div className="w-8 h-8 lg:w-12 lg:h-12 border-2 border-amber-500 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.4)] shrink-0">
                 <Sparkles className="w-4 h-4 lg:w-6 lg:h-6 text-amber-500 animate-pulse" />
               </div>
-              <h1 className="text-xl lg:text-3xl font-serif tracking-[0.1em] lg:tracking-[0.2em] text-amber-50 uppercase gold-glow truncate cursor-default">Magia das Crenças</h1>
+              <h1 className="text-lg lg:text-3xl font-serif tracking-[0.1em] lg:tracking-[0.2em] text-amber-50 uppercase gold-glow truncate cursor-default">Magia das Crenças</h1>
             </div>
          </div>
 
-         <div className="flex items-center gap-4 lg:gap-8 w-full sm:w-auto justify-between sm:justify-end">
+         <div className="flex items-center gap-3 lg:gap-8 w-full sm:w-auto justify-between sm:justify-end">
             {user ? (
-                <div className="flex items-center gap-4 lg:gap-6">
+                <div className="flex items-center gap-4 lg:gap-6 w-full sm:w-auto justify-between sm:justify-end">
                     <div className="flex flex-col items-end">
-                        <span className="text-[8px] lg:text-[10px] uppercase tracking-widest text-amber-500 font-bold italic">Energia Vital</span>
-                        <span className="text-sm lg:text-lg font-mono text-amber-200">
+                        <span className="text-[7px] lg:text-[10px] uppercase tracking-widest text-amber-500 font-bold italic">Energia Vital</span>
+                        <span className="text-xs lg:text-lg font-mono text-amber-200">
                            {user.credits || 0} CR
                         </span>
                     </div>
                     <div className="flex gap-2 lg:gap-4 items-center">
                        <button 
                           onClick={() => setShowPackages(true)}
-                          className="bg-gradient-to-r from-amber-600 to-amber-400 text-black px-3 py-2 lg:px-6 lg:py-2.5 rounded-2xl text-[10px] lg:text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_30px_rgba(245,158,11,0.3)] flex items-center gap-2 group"
+                          className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 text-black px-5 py-2.5 lg:px-8 lg:py-3 rounded-xl lg:rounded-2xl text-[10px] lg:text-sm font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_40px_rgba(245,158,11,0.4)] flex items-center gap-2 group border border-white/20 animate-pulse hover:animate-none"
                        >
-                          <Crown size={12} className="group-hover:rotate-12 transition-transform" />
-                          <span>Adquirir PRO</span>
+                          <Crown size={14} className="group-hover:rotate-12 transition-transform" />
+                          <span className="hidden xs:block">Adquirir PRO</span>
+                          <span className="xs:hidden">OBTER PRO</span>
                        </button>
                        <button 
                           onClick={handleLogout}
-                          className="w-10 h-10 lg:w-12 lg:h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white/40 hover:text-red-400"
+                          className="w-10 h-10 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white/40 hover:text-red-400"
                           title="Sair"
                        >
-                          <LogOut size={18} />
+                          <LogOut size={20} />
                        </button>
                     </div>
                 </div>
             ) : (
                 <button 
                   onClick={() => setShowAuth(true)}
-                  className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl text-xs font-bold uppercase tracking-[0.2em] hover:bg-white/10 transition-all flex items-center gap-3 group"
+                  className="bg-white/5 border border-white/10 px-4 py-2 lg:px-6 lg:py-3 rounded-xl lg:rounded-2xl text-[10px] lg:text-xs font-bold uppercase tracking-[0.2em] hover:bg-white/10 transition-all flex items-center gap-2 lg:gap-3 group whitespace-nowrap"
                 >
                   <User size={16} className="text-amber-500" />
-                  Conectar/Criar Conta
+                  Conectar Conta
                 </button>
             )}
          </div>
       </header>
 
-      <main className="relative z-10 flex-1 flex flex-col lg:grid xl:grid-cols-[1fr_400px_350px] gap-6 p-4 lg:p-6 h-full overflow-hidden">
+      <main className="relative z-10 flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 p-4 lg:p-6 min-h-0 overflow-y-auto lg:overflow-hidden">
         {activeTab === "home" ? (
             <>
-                <div className="order-2 lg:order-1 h-full min-h-0 xl:col-span-1">
+                <div className="order-2 lg:order-1 lg:col-span-4 xl:col-span-3 h-[500px] lg:h-full min-h-0">
                   <ChatSection 
                     user={user} 
                     onCreditUse={handleUseCredit} 
-                    onNewAdvice={async (snippet) => {
-                      setCurrentAdvice(snippet);
-                      if (user && user.uid && !user.uid.startsWith('guest')) {
-                        const userRef = doc(db, "users", user.uid);
-                        await updateDoc(userRef, { lastAdvice: snippet }).catch(console.error);
-                      }
+                    onNewAdvice={(advice) => {
+                      setCurrentAdvice(advice);
                     }}
                   />
                 </div>
 
-                <div className="order-1 lg:order-2 flex items-center justify-center py-4 lg:py-0 min-h-0">
+                <div className="order-1 lg:order-2 lg:col-span-4 xl:col-span-6 flex items-center justify-center py-4 lg:py-0 min-h-0">
                   <CharacterAvatar />
                 </div>
 
-                <div className="order-3 h-full min-h-0">
+                <div className="order-3 lg:col-span-4 xl:col-span-3 h-auto lg:h-full min-h-0 mb-20 lg:mb-0">
                   <UserPanel 
                     user={user} 
                     onSelectConsultation={setActiveTab} 
@@ -255,45 +277,41 @@ export default function App() {
                 </div>
             </>
         ) : (
-            <div className="col-span-full h-full flex flex-col lg:flex-row gap-6 overflow-hidden">
-                <div className="flex-1 h-full min-h-0 bg-black/40 rounded-[32px] border border-white/5">
+            <div className="col-span-full h-full flex flex-col lg:flex-row gap-6 overflow-y-auto lg:overflow-hidden mb-20 lg:mb-0">
+                <div className="flex-1 min-h-[500px] lg:h-full min-w-0 bg-black/40 rounded-[32px] border border-white/5">
                     <ChatSection 
                         user={user} 
                         onCreditUse={(amt) => handleUseCredit(amt)} 
                         initialMessage={`Cigano Pablo, por favor, realize uma leitura de **${activeTab}** para mim agora.`}
-                        onNewAdvice={async (snippet) => {
-                          setCurrentAdvice(snippet);
-                          if (user && user.uid && !user.uid.startsWith('guest')) {
-                             const userRef = doc(db, "users", user.uid);
-                             await updateDoc(userRef, { lastAdvice: snippet }).catch(console.error);
-                          }
+                        onNewAdvice={(advice) => {
+                          setCurrentAdvice(advice);
                         }}
                         key={activeTab}
                     />
                 </div>
-                <div className="w-full lg:w-[400px] bg-white/5 backdrop-blur-xl rounded-[32px] border border-white/10 p-8 flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden">
+                <div className="w-full lg:w-[350px] shrink-0 bg-white/5 backdrop-blur-xl rounded-[32px] border border-white/10 p-6 lg:p-8 flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden h-fit lg:h-full">
                     <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://portalvipbrasil.com.br/wp-content/uploads/2026/05/bg-pattern.png')] bg-repeat"></div>
                     <motion.div 
                         animate={{ rotate: 360 }}
                         transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                        className="w-24 h-24 rounded-full border border-amber-500/20 flex items-center justify-center text-amber-500 bg-amber-500/5 shadow-[0_0_40px_rgba(245,158,11,0.1)]"
+                        className="w-16 h-16 lg:w-24 lg:h-24 rounded-full border border-amber-500/20 flex items-center justify-center text-amber-500 bg-amber-500/5 shadow-[0_0_40px_rgba(245,158,11,0.1)]"
                     >
-                        <Sparkles size={40} />
+                        <Sparkles size={32} />
                     </motion.div>
-                    <h2 className="text-3xl font-serif italic text-white uppercase tracking-widest">{activeTab}</h2>
-                    <p className="text-white/50 text-sm leading-relaxed italic font-serif">
+                    <h2 className="text-2xl lg:text-3xl font-serif italic text-white uppercase tracking-widest">{activeTab}</h2>
+                    <p className="text-white/50 text-xs lg:text-sm leading-relaxed italic font-serif max-w-[280px]">
                       "O véu entre os mundos se torna tênue. Concentre-se em sua pergunta enquanto os símbolos sagrados se revelam."
                     </p>
-                    <div className="flex flex-col gap-3 w-full pt-6">
-                        <div className="px-4 py-2 bg-black/20 rounded-xl text-[10px] uppercase tracking-widest text-amber-500/60 border border-white/5">Conexão Estabelecida</div>
-                        <div className="px-4 py-2 bg-black/20 rounded-xl text-[10px] uppercase tracking-widest text-amber-500/60 border border-white/5">Sintonizando Vibrações</div>
+                    <div className="flex flex-col gap-3 w-full pt-6 max-w-[240px]">
+                        <div className="px-4 py-2 bg-black/20 rounded-xl text-[9px] uppercase tracking-widest text-amber-500/60 border border-white/5">Conexão Estabelecida</div>
+                        <div className="px-4 py-2 bg-black/20 rounded-xl text-[9px] uppercase tracking-widest text-amber-500/60 border border-white/5">Sintonizando Vibrações</div>
                     </div>
                 </div>
             </div>
         )}
       </main>
 
-      <footer className="relative z-20 w-full px-4 py-4 lg:px-8 lg:py-6 border-t border-white/5 bg-black/60 backdrop-blur-xl shrink-0">
+      <footer className="fixed bottom-0 lg:relative z-40 w-full lg:px-8 lg:py-4 border-t border-white/5 bg-black/60 backdrop-blur-xl shrink-0 h-36 lg:h-auto overflow-hidden pb-8 lg:pb-6">
         <SpiritualButtons onSelect={setActiveTab} />
       </footer>
 
@@ -302,6 +320,32 @@ export default function App() {
       <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} />
       <CreditPackagesModal isOpen={showPackages} onClose={() => setShowPackages(false)} userId={user?.uid} />
       <FreeLimitModal isOpen={showFreeLimit} onClose={() => setShowFreeLimit(false)} onPurchaseCredits={() => { setShowFreeLimit(false); setShowPackages(true); }} />
+
+      {/* Payment Success Notification */}
+      <AnimatePresence>
+        {paymentSuccess && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] bg-emerald-500 text-black px-8 py-4 rounded-3xl shadow-[0_0_50px_rgba(16,185,129,0.4)] flex items-center gap-4 border-2 border-emerald-400/50 backdrop-blur-xl"
+          >
+            <div className="w-12 h-12 bg-black/20 rounded-2xl flex items-center justify-center">
+              <Zap size={24} fill="currentColor" />
+            </div>
+            <div>
+              <h4 className="font-black uppercase tracking-widest text-sm">Energia Restaurada!</h4>
+              <p className="text-[10px] font-bold opacity-80">Você recebeu {paymentSuccess} créditos de Energia Vital.</p>
+            </div>
+            <button 
+              onClick={() => setPaymentSuccess(null)}
+              className="ml-4 p-2 hover:bg-black/10 rounded-xl transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         .spinner-slow { animation: spin 20s linear infinite; }

@@ -14,7 +14,7 @@ export type SpiritualUser = {
   sign?: string;
   lifePathNumber?: number;
   nameNumber?: number;
-  regentOdu?: { number: number, name: string };
+  regentOdu?: { number: number, name: string, orixa: string, description: string };
   guardianAngel?: string;
   planetaryHour?: string;
   spiritualElement?: string;

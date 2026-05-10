@@ -74,7 +74,7 @@ export default function UserPanel({ user, onSelectConsultation, advice }: UserPa
               <div className="flex flex-wrap gap-2 pt-2">
                 {user.regentOdu && (
                   <span className="px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] text-amber-500 font-bold uppercase tracking-wider">
-                    Odu {user.regentOdu.number}: {user.regentOdu.name}
+                    Odu {user.regentOdu.number} ({user.regentOdu.orixa}): {user.regentOdu.name}
                   </span>
                 )}
                 {user.lifePathNumber && (

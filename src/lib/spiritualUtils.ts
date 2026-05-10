@@ -40,27 +40,39 @@ export function calculateLifePath(dateStr: string): number {
  * Cálculo de Odu de Nascimento (Tradição Numerológica Brasileira/Afro)
  * Baseado na soma da data de nascimento reduzida ao intervalo 1-16
  */
-export function calculateRegentOdu(dateStr: string): { number: number, name: string } {
-  if (!dateStr) return { number: 0, name: "Desconhecido" };
+export function calculateRegentOdu(dateStr: string): { number: number, name: string, orixa: string, description: string } {
+  if (!dateStr) return { number: 0, name: "Desconhecido", orixa: "Místico", description: "" };
   const date = new Date(dateStr);
   const d = date.getUTCDate();
   const m = date.getUTCMonth() + 1;
   const y = date.getUTCFullYear();
   
-  // Soma simples dos componentes
   let sum = d + m + y;
   while (sum > 16) {
     sum = sum.toString().split('').reduce((acc, curr) => acc + parseInt(curr), 0);
   }
   
-  const odus: { [key: number]: string } = {
-    1: "Okaran", 2: "Eji-Okô", 3: "Eta-Ogundá", 4: "Irosun",
-    5: "Oxé", 6: "Obará", 7: "Odi", 8: "Ejioníle",
-    9: "Ossá", 10: "Ofun", 11: "Owarin", 12: "Ejilaxeborá",
-    13: "Ejilobon", 14: "Iká", 15: "Ogbeogundá", 16: "Alafiá"
+  const odus: { [key: number]: { name: string, orixa: string, desc: string } } = {
+    1: { name: "Okaran", orixa: "Exu", desc: "Início, dualidade e caminhos abertos." },
+    2: { name: "Eji-Okô", orixa: "Ibeji / Ogum", desc: "Dualidade, incerteza e busca por equilíbrio." },
+    3: { name: "Eta-Ogundá", orixa: "Ogum / Obaluaiê", desc: "Luta, esforço e superação de obstáculos." },
+    4: { name: "Irosun", orixa: "Iemanjá / Eguns", desc: "Calma aparente, perigos ocultos e ancestralidade." },
+    5: { name: "Oxé", orixa: "Oxum / Logun Edé", desc: "Brilho, vaidade, riqueza e feitiços." },
+    6: { name: "Obará", orixa: "Xangô / Oxóssi", desc: "Prosperidade, fartura e justiça plena." },
+    7: { name: "Odi", orixa: "Omolu / Oxumarê", desc: "Finalização, mistérios e renovação." },
+    8: { name: "Ejioníle", orixa: "Oxalá", desc: "Paz, pureza, liderança e sabedoria." },
+    9: { name: "Ossá", orixa: "Iansã / Iemanjá", desc: "Mudanças repentinas, ventos e intuição." },
+    10: { name: "Ofun", orixa: "Oxalá / Nanã", desc: "Mistério, quietude e segredos da criação." },
+    11: { name: "Owarin", orixa: "Iansã / Exu", desc: "Agitação, movimento e presságios." },
+    12: { name: "Ejilaxeborá", orixa: "Xangô", desc: "Justiça divina, equilíbrio e autoridade." },
+    13: { name: "Ejilobon", orixa: "Nanã / Obaluaiê", desc: "Maturidade, introspecção e sabedoria antiga." },
+    14: { name: "Iká", orixa: "Oxumarê / Ossain", desc: "Flexibilidade, cura e proteção espiritual." },
+    15: { name: "Ogbeogundá", orixa: "Obá / Ewá", desc: "Inteligência, estratégia e resistência." },
+    16: { name: "Alafiá", orixa: "Orunmilá / Oxalá", desc: "Sucesso, luz plena e caminhos iluminados." }
   };
   
-  return { number: sum, name: odus[sum] || "Místico" };
+  const data = odus[sum] || { name: "Místico", orixa: "Desconhecido", desc: "Caminho oculto." };
+  return { number: sum, name: data.name, orixa: data.orixa, description: data.desc };
 }
 
 export function getSpiritualElement(sign: string): string {

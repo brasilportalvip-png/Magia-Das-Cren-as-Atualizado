@@ -31,16 +31,16 @@ interface SpiritualButtonsProps {
 
 export default function SpiritualButtons({ onSelect }: SpiritualButtonsProps) {
     return (
-        <div className="flex justify-center items-center gap-2 lg:gap-4 w-full h-full">
-            <div className="hidden sm:block h-[1px] flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-            <div className="flex gap-6 lg:gap-8 overflow-x-auto scrollbar-none px-6 lg:px-12 py-4 w-full sm:w-auto items-center">
+        <div className="flex justify-start lg:justify-center items-center gap-2 lg:gap-4 w-full h-full lg:h-auto overflow-x-auto scrollbar-none pb-4 lg:pb-0">
+            <div className="hidden 2xl:block h-[1px] flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+            <div className="flex gap-4 sm:gap-6 lg:gap-8 py-2 sm:py-6 items-center px-4 sm:px-12 lg:px-20 min-w-max">
                 {SPIRITUAL_TOOLS.map((tool) => (
                     <motion.button
                         key={tool.label}
                         onClick={() => onSelect(tool.label)}
-                        whileHover={{ scale: 1.3, y: -15 }}
-                        whileTap={{ scale: 0.85 }}
-                        className="flex flex-col items-center group min-w-[85px] lg:min-w-[120px] relative"
+                        whileHover={{ scale: 1.1, y: -10 }}
+                        whileTap={{ scale: 0.9 }}
+                        className="flex flex-col items-center group min-w-[70px] sm:min-w-[85px] lg:min-w-[110px] relative shrink-0"
                     >
                         {/* Aura Glow */}
                         <div className={`absolute inset-0 blur-2xl opacity-0 group-hover:opacity-40 transition-opacity duration-300 rounded-full ${tool.color} bg-current`} />

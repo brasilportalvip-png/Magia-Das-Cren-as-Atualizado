@@ -13,7 +13,7 @@ export default function CharacterAvatar() {
   }, []);
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden">
+    <div className="relative w-full h-full min-h-[300px] flex flex-col items-center justify-center overflow-hidden">
       {/* Background Atmosphere */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(245,158,11,0.15)_0%,_transparent_70%)] animate-pulse" />
@@ -25,8 +25,8 @@ export default function CharacterAvatar() {
               animate={{ 
                 opacity: [0, 0.6, 0],
                 scale: [1, 2, 1],
-                y: [0, -150 - Math.random() * 250],
-                x: [0, (Math.random() - 0.5) * 150]
+                y: [0, -100 - Math.random() * 150],
+                x: [0, (Math.random() - 0.5) * 100]
               }}
               transition={{ 
                 duration: 5 + Math.random() * 5,
@@ -44,12 +44,12 @@ export default function CharacterAvatar() {
       </div>
 
       {/* Cigano Pablo Visual Representation */}
-      <div className="relative z-10 flex flex-col items-center">
+      <div className="relative z-10 flex flex-col items-center scale-90 xs:scale-100 lg:scale-100">
         <div className="relative group">
           <motion.div 
             animate={{ y: [0, -10, 0] }}
             transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            className="w-[180px] h-[180px] xs:w-[240px] xs:h-[240px] md:w-[320px] md:h-[320px] lg:w-[380px] lg:h-[380px] relative rounded-full overflow-hidden border-4 border-amber-500/50 shadow-[0_0_100px_rgba(245,158,11,0.3)] bg-black/60 group-hover:border-amber-400 transition-colors"
+            className="w-[200px] h-[200px] xs:w-[240px] xs:h-[240px] md:w-[280px] md:h-[280px] lg:w-[320px] lg:h-[320px] xl:w-[380px] xl:h-[380px] relative rounded-full overflow-hidden border-4 border-amber-500/50 shadow-[0_0_100px_rgba(245,158,11,0.3)] bg-black/60 group-hover:border-amber-400 transition-colors"
           >
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10" />
             <img 
@@ -66,7 +66,7 @@ export default function CharacterAvatar() {
             {blink && <div className="absolute top-1/3 left-0 w-full h-2 bg-amber-100/10 blur-md z-20" />}
           </motion.div>
 
-          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-amber-600/90 px-6 py-1.5 rounded-full text-xs font-black tracking-[0.4em] shadow-[0_0_30px_rgba(217,119,6,0.5)] text-white whitespace-nowrap z-30 border border-white/20 uppercase">
+          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-amber-600/90 px-6 py-1.5 rounded-full text-[10px] lg:text-xs font-black tracking-[0.3em] lg:tracking-[0.4em] shadow-[0_0_30px_rgba(217,119,6,0.5)] text-white whitespace-nowrap z-30 border border-white/20 uppercase">
             Cigano Pablo
           </div>
 
@@ -75,7 +75,7 @@ export default function CharacterAvatar() {
             <motion.div 
                animate={{ rotate: 360 }}
                transition={{ duration: 100, repeat: Infinity, ease: "linear" }}
-               className="w-[300px] h-[300px] xs:w-[400px] xs:h-[400px] md:w-[500px] md:h-[500px] lg:w-[600px] lg:h-[600px] flex items-center justify-center"
+               className="w-[280px] h-[280px] xs:w-[350px] xs:h-[350px] md:w-[450px] md:h-[450px] lg:w-[550px] lg:h-[550px] flex items-center justify-center"
             >
               <img 
                 src="https://upload.wikimedia.org/wikipedia/commons/e/e0/Tetragrammaton_Pentagram.svg" 
@@ -90,12 +90,12 @@ export default function CharacterAvatar() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-8 max-w-md text-center px-6"
+          className="mt-6 max-w-[280px] xs:max-w-md text-center px-4"
         >
-          <p className="text-lg font-serif italic text-amber-100/90 leading-relaxed drop-shadow-lg">
+          <p className="text-sm lg:text-lg font-serif italic text-amber-100/90 leading-relaxed drop-shadow-lg">
             "As estrelas sussurram segredos que só o seu coração pode ouvir agora. O que deseja desvendar nos caminhos da sua alma?"
           </p>
-          <div className="h-[1px] w-32 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent mx-auto mt-6"></div>
+          <div className="h-[1px] w-24 lg:w-32 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent mx-auto mt-4 lg:mt-6"></div>
         </motion.div>
       </div>
     </div>

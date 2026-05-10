@@ -275,14 +275,14 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
 
       {/* Input & Suggestions */}
       <div className="p-4 border-t border-white/10 bg-black/40">
-        <div className="flex gap-2.5 overflow-x-auto pb-5 pt-1 scrollbar-none px-1">
+        <div className="flex gap-2 lg:gap-2.5 overflow-x-auto pb-4 pt-1 scrollbar-none px-4 lg:px-6">
           {QUICK_SUGGESTIONS.map((s) => (
             <motion.button
-              whileHover={{ scale: 1.1, y: -4 }}
-              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
               key={s.label}
               onClick={() => handleSendMessage(s.label)}
-              className={`px-6 py-3.5 rounded-2xl bg-gradient-to-br ${s.gradient} ${s.border} border-2 hover:border-white transition-all whitespace-nowrap text-[12px] uppercase tracking-[0.25em] font-black group relative overflow-hidden flex items-center gap-3 ${s.glow} hover:brightness-150 active:brightness-90`}
+              className={`px-4 py-2.5 lg:px-6 lg:py-3.5 rounded-xl lg:rounded-2xl bg-gradient-to-br ${s.gradient} ${s.border} border-2 hover:border-white transition-all whitespace-nowrap text-[10px] lg:text-[12px] uppercase tracking-[0.25em] font-black group relative overflow-hidden flex items-center gap-2 lg:gap-3 ${s.glow} hover:brightness-150 active:brightness-90 shrink-0`}
             >
               {/* Inner Light Effect */}
               <div className="absolute inset-x-0 top-0 h-1/2 bg-white/20 blur-sm group-hover:bg-white/30 transition-colors" />

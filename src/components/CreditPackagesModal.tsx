@@ -38,9 +38,17 @@ export default function CreditPackagesModal({ isOpen, onClose, userId }: CreditP
         throw new Error(data.error || 'Erro ao gerar link de pagamento');
       }
 
-      // Redirect to PagBank Checkout
+      // Redirect to PagBank Checkout - Opening in a new tab to avoid iframe blocking
       if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
+        const fullUrl = data.checkoutUrl.startsWith('http') 
+          ? data.checkoutUrl 
+          : window.location.origin + data.checkoutUrl;
+
+        const checkoutWindow = window.open(fullUrl, '_blank');
+        if (!checkoutWindow) {
+           // Fallback if popup is blocked
+           window.location.href = fullUrl;
+        }
       } else {
         throw new Error('Url de checkout não recebida');
       }

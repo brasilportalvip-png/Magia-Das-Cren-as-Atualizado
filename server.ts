@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 
 dotenv.config();
 
@@ -23,40 +24,91 @@ async function startServer() {
 
   app.use(express.json());
 
-  // PagBank Checkout Route
+  // PagBank Checkout Route - Simulation for now to avoid broken redirects
   app.post("/api/payments/create", async (req, res) => {
     try {
       const { packageId, amount, credits, packageName, userEmail, userName, userId } = req.body;
       
-      const email = process.env.PAGBANK_EMAIL;
+      // If we have credentials, we could do real API calls, but for testing
+      // we'll use a simulation that actually rewards the credits to the user.
+      
+      const email = process.env.VITE_PAGBANK_EMAIL;
       const token = process.env.PAGBANK_TOKEN;
 
-      if (!email || !token) {
-        throw new Error("PAGBANK_CREDENTIALS_MISSING");
-      }
-
-      // In a real production environment, you would call the PagSeguro/PagBank API here
-      // Example of the POST request to PagSeguro for a Checkout Session:
-      // URL: https://ws.pagseguro.uol.com.br/v2/checkout (Production)
+      console.log(`[PagBank] Iniciando requisição para ${userEmail || userId}`);
       
-      console.log(`[PagBank] Creating checkout for ${userEmail} - Package: ${packageName}`);
-      
-      // For the sake of this implementation and since we are in a dev environment,
-      // we will simulate the success response with a mock checkout URL 
-      // but the structure is ready to be connected to the real endpoint.
-      
-      // To implement real PagSeguro XML/JSON checkout, you would use axios here.
-      
-      const mockCheckoutUrl = `https://pagseguro.uol.com.br/v2/checkout/payment.html?code=DEMO_CODE_${Date.now()}`;
+      // Para o ambiente de desenvolvimento, geramos um caminho que simula o sucesso.
+      const mockCheckoutPath = `/api/payments/mock-success?userId=${userId}&credits=${credits}&packageId=${packageId}&amount=${amount}`;
       
       res.json({ 
-        checkoutUrl: mockCheckoutUrl,
-        message: "Redirecionando para o PagBank..." 
+        checkoutUrl: mockCheckoutPath,
+        message: "Redirecionando para o portal de pagamento..." 
       });
 
     } catch (error: any) {
       console.error("[PagBank] Error:", error);
       res.status(500).json({ error: "Erro ao processar pagamento com PagBank." });
+    }
+  });
+
+  // Mock Success Route - THIS GRANTS CREDITS FOR TESTING
+  app.get("/api/payments/mock-success", async (req, res) => {
+    const { userId, credits, packageId, amount } = req.query;
+    
+    if (!userId || !credits) {
+      return res.status(400).send("Dados inválidos");
+    }
+
+    try {
+      // Importante: Usar o ID do banco de dados configurado explicitamente
+      const db = getFirestore("ai-studio-d1105614-3639-456a-86a6-874590479208");
+      
+      const userRef = db.collection("users").doc(userId as string);
+      const creditsToAdd = parseInt(credits as string);
+      const amountValue = parseFloat(amount as string || "0");
+
+      console.log(`[PAGAMENTO] Processando ${creditsToAdd} créditos para o usuário ${userId}`);
+
+      await db.runTransaction(async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        
+        if (userDoc.exists) {
+          const currentCredits = userDoc.data()?.credits || 0;
+          transaction.update(userRef, {
+            credits: currentCredits + creditsToAdd,
+            plan: 'pro',
+            lastPurchaseAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        } else {
+          // Se o documento não existe, cria um novo
+          transaction.set(userRef, {
+            uid: userId,
+            credits: creditsToAdd,
+            plan: 'pro',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastPurchaseAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }
+        
+        // Registrar transação
+        const transRef = userRef.collection("transactions").doc();
+        transaction.set(transRef, {
+          amount: amountValue,
+          credits: creditsToAdd,
+          type: 'purchase',
+          package: packageId,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          status: 'completed',
+          provider: 'pagbank_simulated'
+        });
+      });
+
+      console.log(`[PAGAMENTO] Sucesso para ${userId}`);
+      // Redirecionar de volta para o app com parâmetro de sucesso
+      res.redirect(`/?payment=success&credits=${credits}`);
+    } catch (error: any) {
+      console.error("Mock Credit Error Full:", error);
+      res.status(500).send(`Erro ao processar seus créditos ritualísticos: ${error.message || 'Erro desconhecido'}`);
     }
   });
 
