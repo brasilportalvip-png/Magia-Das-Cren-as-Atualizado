@@ -11,6 +11,7 @@ import {
   Moon, 
   ShieldCheck, 
   Eye, 
+  Flame,
   Menu 
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ const SPIRITUAL_TOOLS = [
   { label: "Numerologia", icon: <Binary size={28} />, color: "text-blue-400", glow: "group-hover:shadow-[0_0_45px_rgba(59,130,246,1)]", bg: "group-hover:bg-blue-500", border: "border-blue-500" },
   { label: "Mapa Astral", icon: <MapIcon size={28} />, color: "text-pink-400", glow: "group-hover:shadow-[0_0_45px_rgba(236,72,153,1)]", bg: "group-hover:bg-pink-500", border: "border-pink-500" },
   { label: "Anjo Guardião", icon: <Search size={28} />, color: "text-yellow-400", glow: "group-hover:shadow-[0_0_45px_rgba(234,179,8,1)]", bg: "group-hover:bg-yellow-500", border: "border-yellow-500" },
+  { label: "Daimons", icon: <Flame size={28} />, color: "text-slate-400", glow: "group-hover:shadow-[0_0_45px_rgba(148,163,184,1)]", bg: "group-hover:bg-slate-500", border: "border-slate-500" },
 ];
 
 interface SpiritualButtonsProps {

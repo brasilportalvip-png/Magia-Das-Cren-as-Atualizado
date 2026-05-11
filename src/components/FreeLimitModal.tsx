@@ -31,10 +31,10 @@ export default function FreeLimitModal({ isOpen, onClose, onPurchaseCredits }: F
           />
         </div>
 
-        <h2 className="text-3xl font-serif italic text-white mb-6">Seu ciclo espiritual gratuito terminou</h2>
+        <h2 className="text-3xl font-serif italic text-white mb-6">Suas energias acabaram.</h2>
         
         <p className="text-white/60 leading-relaxed mb-10 text-sm">
-          "As energias básicas foram exauridas. Para mergulhar mais profundamente nos mistérios que cercam seu destino, é necessário equilibrar a troca energética."
+          Abasteça com o plano pró
         </p>
 
         <div className="space-y-4">
@@ -43,7 +43,7 @@ export default function FreeLimitModal({ isOpen, onClose, onPurchaseCredits }: F
             className="w-full py-5 bg-gradient-to-r from-amber-500 to-yellow-600 text-black font-black uppercase tracking-[0.2em] rounded-2xl flex items-center justify-center gap-3 shadow-xl hover:brightness-110 active:scale-95 transition-all text-[12px]"
           >
             <Zap className="fill-black" size={18} />
-            Desbloquear Plano PRO
+            Desbloquear Plano Prata ou Ouro
             <ArrowRight size={18} />
           </button>
           

@@ -11,7 +11,8 @@ dotenv.config();
 if (!admin.apps.length) {
   try {
     admin.initializeApp({
-      credential: admin.credential.applicationDefault()
+      credential: admin.credential.applicationDefault(),
+      projectId: "gen-lang-client-0138178639"
     });
   } catch (e) {
     console.warn("Firebase Admin fallback: applicationDefault failed. Ensure credentials are set.");
@@ -24,30 +25,28 @@ async function startServer() {
 
   app.use(express.json());
 
-  // PagBank Checkout Route - Simulation for now to avoid broken redirects
+  // Mercado Pago Checkout Route
   app.post("/api/payments/create", async (req, res) => {
     try {
       const { packageId, amount, credits, packageName, userEmail, userName, userId } = req.body;
       
-      // If we have credentials, we could do real API calls, but for testing
-      // we'll use a simulation that actually rewards the credits to the user.
+      console.log(`[Mercado Pago] Iniciando requisição para ${userEmail || userId}`);
       
-      const email = process.env.VITE_PAGBANK_EMAIL;
-      const token = process.env.PAGBANK_TOKEN;
+      // No ambiente real, aqui usaríamos o SDK do Mercado Pago
+      // const preference = new Preference(client);
+      // const result = await preference.create({ body: { ... } });
 
-      console.log(`[PagBank] Iniciando requisição para ${userEmail || userId}`);
-      
       // Para o ambiente de desenvolvimento, geramos um caminho que simula o sucesso.
       const mockCheckoutPath = `/api/payments/mock-success?userId=${userId}&credits=${credits}&packageId=${packageId}&amount=${amount}`;
       
       res.json({ 
         checkoutUrl: mockCheckoutPath,
-        message: "Redirecionando para o portal de pagamento..." 
+        message: "Redirecionando para o Mercado Pago..." 
       });
 
     } catch (error: any) {
-      console.error("[PagBank] Error:", error);
-      res.status(500).json({ error: "Erro ao processar pagamento com PagBank." });
+      console.error("[Mercado Pago] Error:", error);
+      res.status(500).json({ error: "Erro ao processar pagamento com Mercado Pago." });
     }
   });
 
@@ -61,13 +60,17 @@ async function startServer() {
 
     try {
       // Importante: Usar o ID do banco de dados configurado explicitamente
-      const db = getFirestore("ai-studio-d1105614-3639-456a-86a6-874590479208");
+      const db = getFirestore(undefined, "ai-studio-d1105614-3639-456a-86a6-874590479208");
       
       const userRef = db.collection("users").doc(userId as string);
       const creditsToAdd = parseInt(credits as string);
       const amountValue = parseFloat(amount as string || "0");
+      
+      // Determine the plan based on the package ID
+      let plan: 'free' | 'silver' | 'gold' = 'silver';
+      if (packageId === 'gold') plan = 'gold';
 
-      console.log(`[PAGAMENTO] Processando ${creditsToAdd} créditos para o usuário ${userId}`);
+      console.log(`[PAGAMENTO] Processando ${creditsToAdd} créditos para o usuário ${userId} - Plano: ${plan}`);
 
       await db.runTransaction(async (transaction) => {
         const userDoc = await transaction.get(userRef);
@@ -76,7 +79,7 @@ async function startServer() {
           const currentCredits = userDoc.data()?.credits || 0;
           transaction.update(userRef, {
             credits: currentCredits + creditsToAdd,
-            plan: 'pro',
+            plan: plan,
             lastPurchaseAt: admin.firestore.FieldValue.serverTimestamp()
           });
         } else {
@@ -84,7 +87,7 @@ async function startServer() {
           transaction.set(userRef, {
             uid: userId,
             credits: creditsToAdd,
-            plan: 'pro',
+            plan: plan,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             lastPurchaseAt: admin.firestore.FieldValue.serverTimestamp()
           });
@@ -99,7 +102,7 @@ async function startServer() {
           package: packageId,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           status: 'completed',
-          provider: 'pagbank_simulated'
+          provider: 'mercadopago_simulated'
         });
       });
 

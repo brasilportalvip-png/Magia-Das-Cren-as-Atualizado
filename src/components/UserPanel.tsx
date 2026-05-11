@@ -2,7 +2,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   User, Sparkles, Hand, Dices, Eye, Compass, 
   ShieldCheck, Binary, Asterisk, Moon, MapIcon, 
-  Search, ChevronRight, Zap, Crown, Info, Calendar
+  Search, ChevronRight, Zap, Crown, Info, Calendar,
+  Edit2, Flame
 } from "lucide-react";
 import { SpiritualUser } from "../types/spiritual";
 import { getWeekDay } from "../lib/spiritualUtils";
@@ -10,6 +11,7 @@ import { getWeekDay } from "../lib/spiritualUtils";
 interface UserPanelProps {
   user: SpiritualUser | null;
   onSelectConsultation?: (tool: string) => void;
+  onEditProfile?: () => void;
   advice?: string;
 }
 
@@ -22,9 +24,10 @@ const MENU_CONSULTAS = [
   { label: "Orixás", icon: <ShieldCheck size={18} />, color: "text-rose-400", glow: "shadow-[0_0_20px_rgba(244,63,94,0.3)]", gradient: "from-rose-600/20 to-rose-900/30", border: "border-rose-500/30" },
   { label: "Numerologia", icon: <Binary size={18} />, color: "text-blue-400", glow: "shadow-[0_0_20_rgba(59,130,246,0.3)]", gradient: "from-blue-600/20 to-blue-900/30", border: "border-blue-500/30" },
   { label: "Anjo Guardião", icon: <Search size={18} />, color: "text-yellow-400", glow: "shadow-[0_0_20px_rgba(234,179,8,0.3)]", gradient: "from-yellow-600/20 to-yellow-900/30", border: "border-yellow-500/30" },
+  { label: "Daimons", icon: <Flame size={18} />, color: "text-slate-400", glow: "shadow-[0_0_20px_rgba(148,163,184,0.3)]", gradient: "from-slate-600/20 to-slate-900/30", border: "border-slate-500/30" },
 ];
 
-export default function UserPanel({ user, onSelectConsultation, advice }: UserPanelProps) {
+export default function UserPanel({ user, onSelectConsultation, onEditProfile, advice }: UserPanelProps) {
   if (!user) {
     return (
       <div className="h-full bg-white/5 backdrop-blur-3xl rounded-[32px] border border-white/10 p-8 flex flex-col items-center justify-center text-center space-y-8 shadow-2xl">
@@ -65,11 +68,18 @@ export default function UserPanel({ user, onSelectConsultation, advice }: UserPa
             {user.sign ? `${user.sign}` : 'Buscador das Estrelas'}
           </p>
           <h2 className="text-xl font-serif text-white truncate italic">{user.displayName}</h2>
+          <button 
+            onClick={onEditProfile}
+            className="flex items-center gap-1.5 text-[9px] text-amber-500/50 hover:text-amber-500 transition-colors uppercase tracking-widest font-bold mt-1"
+          >
+            <Edit2 size={10} />
+            Editar Perfil
+          </button>
           {user.birthDate && (
             <div className="mt-2 space-y-1">
               <p className="text-[9px] text-white/30 uppercase tracking-widest flex items-center gap-1.5">
                 <Calendar size={10} className="text-amber-500/50" />
-                {getWeekDay(user.birthDate)}, {new Date(user.birthDate).toLocaleDateString('pt-BR')} às {user.birthTime}
+                {getWeekDay(user.birthDate)}, {user.birthDate.split('-').reverse().join('/')} às {user.birthTime}
               </p>
               <div className="flex flex-wrap gap-2 pt-2">
                 {user.regentOdu && (
@@ -114,8 +124,10 @@ export default function UserPanel({ user, onSelectConsultation, advice }: UserPa
           <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col gap-1 hover:bg-white/10 transition-colors group">
             <span className="text-[8px] uppercase tracking-widest text-white/30 font-bold group-hover:text-amber-500 transition-colors">Plano Atual</span>
             <div className="flex items-center gap-2">
-              <Crown className={user.plan === 'pro' ? 'text-amber-500' : 'text-white/20'} size={14} />
-              <span className="text-xs font-black uppercase text-white/90">{user.plan}</span>
+              <Crown className={user.plan !== 'free' ? 'text-amber-500' : 'text-white/20'} size={14} />
+              <span className="text-xs font-black uppercase text-white/90">
+                {user.plan === 'free' ? 'Gratuito' : user.plan === 'silver' ? 'Prata' : 'Ouro'}
+              </span>
             </div>
           </div>
           <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex flex-col gap-1 hover:bg-white/10 transition-colors group">

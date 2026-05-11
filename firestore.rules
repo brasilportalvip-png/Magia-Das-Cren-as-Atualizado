@@ -20,11 +20,18 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == 'brasilportalvip@gmail.com';
+    }
+
     // Users collection
     match /users/{userId} {
       allow get: if isOwner(userId);
+      // Permitir list para verificação de anti-pirataria (deviceId)
+      allow list: if isSignedIn();
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || (isSignedIn() && request.auth.token.email == 'brasilportalvip@gmail.com');
+      // Permitir atualização se for o dono ou admin
+      allow update: if isOwner(userId) || isAdmin();
 
       // Consultations subcollection
       match /consultations/{consultationId} {

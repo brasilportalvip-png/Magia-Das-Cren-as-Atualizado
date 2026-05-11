@@ -3,17 +3,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, Mail, Lock, LogIn, UserPlus, 
   ArrowRight, Sparkles, AlertCircle, Globe,
-  Calendar, Clock, User
+  Calendar, Clock, User, Eye, EyeOff
 } from 'lucide-react';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
-  signInWithPopup, 
-  GoogleAuthProvider,
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { 
   getZodiacSign, 
   calculateLifePath, 
@@ -40,6 +38,32 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [tempUid, setTempUid] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  React.useEffect(() => {
+    if (isOpen && auth.currentUser) {
+      setMode('complete_profile'); 
+      const loadUser = async () => {
+        const docRef = doc(db, 'users', auth.currentUser!.uid);
+        const snp = await getDoc(docRef);
+        if (snp.exists()) {
+          const data = snp.data();
+          setName(data.displayName || '');
+          setBirthDate(data.birthDate || '');
+          setBirthTime(data.birthTime || '');
+        }
+      };
+      loadUser();
+    }
+  }, [isOpen, auth.currentUser]);
+
+  const generateUUID = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
 
   const checkProfileCompleteness = async (uid: string, defaultData: any) => {
     const userDocRef = doc(db, 'users', uid);
@@ -65,27 +89,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     return true;
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const isComplete = await checkProfileCompleteness(result.user.uid, {
-        displayName: result.user.displayName,
-        email: result.user.email
-      });
-      
-      if (isComplete) {
-        onClose();
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCompleteProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -102,7 +105,24 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       const planetaryHour = getPlanetaryHour(birthTime);
 
       const userDocRef = doc(db, 'users', uid);
-      await setDoc(userDocRef, {
+      const userDoc = await getDoc(userDocRef);
+      const userData = userDoc.exists() ? userDoc.data() : null;
+      
+      // Anti-fraud check
+      const deviceId = localStorage.getItem('spirit_device_id');
+      if (deviceId) {
+        const q = query(collection(db, 'users'), where('deviceId', '==', deviceId));
+        const qSnapshot = await getDocs(q);
+        // Exclude current user from the check
+        const otherUsers = qSnapshot.docs.filter(d => d.id !== uid);
+        if (otherUsers.length > 0) {
+           setError('Este dispositivo já possui uma conta vinculada. A proteção anti-fraude permite apenas uma conta por ID.');
+           setLoading(false);
+           return;
+        }
+      }
+
+      const updateData: any = {
         uid,
         displayName: name,
         email: auth.currentUser?.email || email,
@@ -115,13 +135,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         spiritualElement,
         guardianAngel,
         planetaryHour,
-        credits: 30, // Updated to 30 as requested
-        plan: 'free',
-        freeQueriesUsed: 0,
-        freeRefillsCount: 0,
-        spiritualLevel: 1,
-        createdAt: new Date().toISOString()
-      }, { merge: true });
+        deviceId: deviceId || generateUUID(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // Only set initial values if user is new or fields are missing
+      if (!userData) {
+        updateData.credits = 7;
+        updateData.plan = 'free';
+        updateData.freeQueriesUsed = 0;
+        updateData.freeRefillsCount = 0;
+        updateData.spiritualLevel = 1;
+        updateData.createdAt = new Date().toISOString();
+      }
+
+      await setDoc(userDocRef, updateData, { merge: true });
       onClose();
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `users/${uid}`);
@@ -144,6 +172,24 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         if (isComplete) onClose();
       } else if (mode === 'register') {
         const result = await createUserWithEmailAndPassword(auth, email, password);
+
+        // Anti-fraud check
+        const deviceId = localStorage.getItem('spirit_device_id') || generateUUID();
+        localStorage.setItem('spirit_device_id', deviceId);
+
+        const q = query(collection(db, 'users'), where('deviceId', '==', deviceId));
+        const qSnapshot = await getDocs(q);
+        // During registration, we check if ANY other user already has this deviceId
+        if (qSnapshot.size > 0) {
+           // We allow if the user we just created somehow has it (unlikely) or if it's genuinely another user
+           const otherUsers = qSnapshot.docs.filter(d => d.id !== result.user.uid);
+           if (otherUsers.length > 0) {
+              setError('Este dispositivo já possui uma conta vinculada. A proteção anti-fraude permite apenas uma conta por ID.');
+              setLoading(false);
+              return;
+           }
+        }
+
         const userDocRef = doc(db, 'users', result.user.uid);
         
         const sign = getZodiacSign(birthDate);
@@ -168,7 +214,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             spiritualElement,
             guardianAngel,
             planetaryHour,
-            credits: 30, // Updated to 30 as requested
+            credits: 7, // Updated to 7
+            deviceId,
             plan: 'free',
             freeQueriesUsed: 0,
             freeRefillsCount: 0,
@@ -236,25 +283,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             </button>
           </div>
 
-          {mode !== 'complete_profile' && (
-            <>
-              <button
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center gap-3 hover:bg-white/10 transition-all text-white font-medium group"
-              >
-                <Globe className="text-blue-400 group-hover:scale-110 transition-transform" />
-                Entrar com Google
-              </button>
-
-              <div className="flex items-center gap-4 text-white/20">
-                <div className="h-px flex-1 bg-white/10"></div>
-                <span className="text-[10px] uppercase tracking-widest font-black">ou e-mail</span>
-                <div className="h-px flex-1 bg-white/10"></div>
-              </div>
-            </>
-          )}
-
           {mode === 'complete_profile' && (
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2">
               <p className="text-amber-200 text-xs font-serif italic text-center">
@@ -296,7 +324,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-amber-500/70 font-bold ml-1">Hora Exata</label>
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-amber-500/70 font-bold ml-1">Hora de Nascimento</label>
                     <div className="relative">
                       <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
                       <input
@@ -335,14 +363,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-white/20 focus:outline-none focus:border-amber-500/50 transition-all"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-12 text-white placeholder:text-white/20 focus:outline-none focus:border-amber-500/50 transition-all font-mono"
                     placeholder="••••••••"
                     required
                     minLength={6}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-white transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} /> }
+                  </button>
                 </div>
               </div>
             )}
@@ -372,7 +407,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   {mode === 'login' && 'Entrar no Portal'}
                   {mode === 'register' && 'Iniciar Jornada'}
                   {mode === 'forgot' && 'Enviar Link'}
-                  {mode === 'complete_profile' && 'Consagrar Dados'}
+                  {mode === 'complete_profile' && (auth.currentUser ? 'Salvar Alterações' : 'Consagrar Dados')}
                   <ArrowRight size={18} />
                 </>
               )}

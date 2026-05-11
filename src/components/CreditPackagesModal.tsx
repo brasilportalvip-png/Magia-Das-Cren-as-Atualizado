@@ -15,49 +15,19 @@ export default function CreditPackagesModal({ isOpen, onClose, userId }: CreditP
   if (!isOpen) return null;
 
   const handlePurchase = async (pkg: CreditPackage) => {
-    if (!userId) return;
-    setLoading(pkg.id);
+    if (!userId && pkg.id !== 'free') return;
     
-    try {
-      // Create PagBank payment request
-      const response = await fetch('/api/payments/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: userId,
-          packageId: pkg.id,
-          amount: pkg.price,
-          credits: pkg.credits,
-          packageName: pkg.name
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao gerar link de pagamento');
-      }
-
-      // Redirect to PagBank Checkout - Opening in a new tab to avoid iframe blocking
-      if (data.checkoutUrl) {
-        const fullUrl = data.checkoutUrl.startsWith('http') 
-          ? data.checkoutUrl 
-          : window.location.origin + data.checkoutUrl;
-
-        const checkoutWindow = window.open(fullUrl, '_blank');
-        if (!checkoutWindow) {
-           // Fallback if popup is blocked
-           window.location.href = fullUrl;
-        }
-      } else {
-        throw new Error('Url de checkout não recebida');
-      }
-
-    } catch (error: any) {
-      console.error('Purchase error:', error);
-      alert('O portal de pagamentos está em manutenção ritualística. Tente novamente mais tarde.');
-    } finally {
+    if (pkg.checkoutUrl) {
+      setLoading(pkg.id);
+      // Redirect directly to Mercado Pago
+      window.open(pkg.checkoutUrl, '_blank');
       setLoading(null);
+      return;
+    }
+
+    if (pkg.id === 'free') {
+      onClose();
+      return;
     }
   };
 
@@ -91,15 +61,16 @@ export default function CreditPackagesModal({ isOpen, onClose, userId }: CreditP
                 whileHover={{ y: -10 }}
                 className={`relative group p-8 rounded-[32px] border-2 border-white/5 hover:border-white/20 transition-all flex flex-col h-full bg-gradient-to-b from-white/5 to-transparent ${pkg.glow}`}
               >
-                {pkg.id === 'master' && (
+                {pkg.id === 'gold' && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-amber-500/20">
                     <Crown size={12} fill="currentColor" /> Recomendado
                   </div>
                 )}
 
                 <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${pkg.color} flex items-center justify-center text-white mb-6 group-hover:scale-110 transition-transform duration-500 shadow-xl`}>
-                   {pkg.id === 'standard' && <Zap size={32} fill="currentColor" />}
-                   {pkg.id === 'master' && <Crown size={32} fill="currentColor" />}
+                   {pkg.id === 'free' && <Zap size={32} fill="currentColor" />}
+                   {pkg.id === 'silver' && <Crown size={32} fill="currentColor" />}
+                   {pkg.id === 'gold' && <Sparkles size={32} fill="currentColor" />}
                 </div>
 
                 <h3 className="text-xl font-black text-white uppercase tracking-widest mb-1 italic">{pkg.name}</h3>
@@ -123,7 +94,7 @@ export default function CreditPackagesModal({ isOpen, onClose, userId }: CreditP
                     <CheckCircle2 size={16} className="text-white/20" />
                     <span className="text-xs">Histórico Astral</span>
                   </div>
-                  {pkg.id === 'master' && (
+                  {pkg.id === 'gold' && (
                     <div className="flex items-center gap-2 text-amber-400">
                       <Sparkles size={16} className="animate-pulse" />
                       <span className="text-xs font-bold uppercase tracking-wider">Acesso Prioritário Pablo</span>
@@ -135,7 +106,8 @@ export default function CreditPackagesModal({ isOpen, onClose, userId }: CreditP
                   disabled={loading !== null}
                   onClick={() => handlePurchase(pkg)}
                   className={`w-full py-5 rounded-2xl text-black font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 relative overflow-hidden group/btn ${
-                    pkg.id === 'master' ? 'bg-amber-500 scale-105 shadow-xl shadow-amber-500/20' : 'bg-white'
+                    pkg.id === 'gold' ? 'bg-amber-500 scale-105 shadow-xl shadow-amber-500/20' : 
+                    pkg.id === 'free' ? 'bg-emerald-500' : 'bg-white'
                   }`}
                 >
                   <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000 skew-x-12" />
@@ -143,7 +115,7 @@ export default function CreditPackagesModal({ isOpen, onClose, userId }: CreditP
                     <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                   ) : (
                     <>
-                      Ativar Agora
+                      {pkg.id === 'free' ? 'Continuar Gratuitamente' : 'Ativar Agora'}
                       <ArrowRight size={18} />
                     </>
                   )}
@@ -157,7 +129,7 @@ export default function CreditPackagesModal({ isOpen, onClose, userId }: CreditP
                "Ao investir em sua energia vital, você abre os canais da abundância e clareza para seu destino."
              </p>
              <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-black">
-               Pagamento seguro via PagBank • Processamento instantâneo
+               Pagamento seguro via Mercado Pago • Processamento instantâneo
              </p>
           </div>
         </div>

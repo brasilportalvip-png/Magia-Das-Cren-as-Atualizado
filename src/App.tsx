@@ -3,13 +3,12 @@ import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
 import { doc, setDoc, onSnapshot, getDoc, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { motion, AnimatePresence } from "motion/react";
-import { Sparkles, X, ChevronLeft, UserCircle, Zap, Crown, Loader2, LogOut, User } from "lucide-react";
+import { Sparkles, X, ChevronLeft, UserCircle, Zap, Crown, Loader2, LogOut, User, MessageCircle } from "lucide-react";
 
 import ChatSection from "./components/ChatSection";
 import CharacterAvatar from "./components/CharacterAvatar";
 import UserPanel from "./components/UserPanel";
 import SpiritualButtons from "./components/SpiritualButtons";
-import AudioControls from "./components/AudioControls";
 import AuthModal from "./components/AuthModal";
 import CreditPackagesModal from "./components/CreditPackagesModal";
 import FreeLimitModal from "./components/FreeLimitModal";
@@ -45,11 +44,28 @@ export default function App() {
       if (!authUser) {
         setUser(null);
         setLoading(false);
+        setShowAuth(true); // Forced auth on entry
       }
     });
 
-    return () => unsubscribeAuth();
+    // Emergency loading timeout
+    const loadingTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 15000);
+
+    return () => {
+      unsubscribeAuth();
+      clearTimeout(loadingTimeout);
+    };
   }, []);
+
+  const generateUUID = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
 
   useEffect(() => {
     if (!uid) return;
@@ -64,23 +80,24 @@ export default function App() {
         // MIGRATION / INITIALIZATION for existing users who might have 0 credits
         if (userData.plan === 'free' && (userData.credits === undefined || userData.credits === 0) && (userData.freeRefillsCount || 0) === 0) {
              updateDoc(userRef, { 
-               credits: 30,
-               freeRefillsCount: 0 // Reset refills count for 30 start
+               credits: 7,
+               freeRefillsCount: 0 // Reset refills count for start
              }).catch(console.error);
         }
 
         // ADMIN GIFT: Grant 1000 credits and reset free queries to the owner for testing
         if (auth.currentUser?.email === 'brasilportalvip@gmail.com') {
-          if ((userData.credits || 0) < 1000) {
+          if ((userData.credits || 0) < 1000 || userData.plan !== 'gold') {
             updateDoc(userRef, { 
-              credits: 1000
+              credits: 1000,
+              plan: 'gold'
             }).catch(console.error);
           }
         }
 
         setUser(userData);
 
-        // AUTO-REFILL LOGIC (30 credits every 48h, max 2 times)
+        // AUTO-REFILL LOGIC (7 credits every 48h, max 2 times)
         if (userData.plan === 'free') {
           const now = new Date();
           const lastRefill = userData.lastFreeRefillAt ? new Date(userData.lastFreeRefillAt) : new Date(userData.createdAt);
@@ -88,9 +105,9 @@ export default function App() {
           const diffHours = diffMs / (1000 * 60 * 60);
           const refillsUsed = userData.freeRefillsCount || 0;
 
-          if (diffHours >= 48 && refillsUsed < 2 && userData.credits < 30) {
+          if (diffHours >= 48 && refillsUsed < 2 && userData.credits < 7) {
             updateDoc(userRef, {
-              credits: (userData.credits || 0) + 30,
+              credits: (userData.credits || 0) + 7,
               freeRefillsCount: refillsUsed + 1,
               lastFreeRefillAt: now.toISOString()
             }).catch(console.error);
@@ -103,13 +120,21 @@ export default function App() {
         }
       } else {
         // Initialize user only once
+        // Simple Anti-fraud device check
+        let deviceId = localStorage.getItem('spirit_device_id');
+        if (!deviceId) {
+           deviceId = generateUUID();
+           localStorage.setItem('spirit_device_id', deviceId);
+        }
+
         const newUser: SpiritualUser = {
           uid: uid,
           displayName: auth.currentUser?.displayName || "Buscador",
           email: auth.currentUser?.email || "",
           photoURL: auth.currentUser?.photoURL || undefined,
-          credits: 30, // Starts with 30 credits as requested
+          credits: 7, // Starts with 7 credits as requested
           plan: "free",
+          deviceId: deviceId, // Anti-piracy ID
           freeQueriesUsed: 0,
           freeRefillsCount: 0,
           spiritualLevel: 1,
@@ -126,6 +151,7 @@ export default function App() {
       setLoading(false);
     }, (error) => {
       // Classic leaky listener fix: Only report if we still have a user
+      setLoading(false);
       if (auth.currentUser) {
         handleFirestoreError(error, OperationType.GET, `users/${uid}`);
       }
@@ -227,8 +253,8 @@ export default function App() {
                           className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 text-black px-5 py-2.5 lg:px-8 lg:py-3 rounded-xl lg:rounded-2xl text-[10px] lg:text-sm font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_40px_rgba(245,158,11,0.4)] flex items-center gap-2 group border border-white/20 animate-pulse hover:animate-none"
                        >
                           <Crown size={14} className="group-hover:rotate-12 transition-transform" />
-                          <span className="hidden xs:block">Adquirir PRO</span>
-                          <span className="xs:hidden">OBTER PRO</span>
+                          <span className="hidden xs:block">Evoluir Plano</span>
+                          <span className="xs:hidden">PLANOS</span>
                        </button>
                        <button 
                           onClick={handleLogout}
@@ -272,6 +298,7 @@ export default function App() {
                   <UserPanel 
                     user={user} 
                     onSelectConsultation={setActiveTab} 
+                    onEditProfile={() => setShowAuth(true)}
                     advice={user?.lastAdvice || currentAdvice}
                   />
                 </div>
@@ -315,11 +342,23 @@ export default function App() {
         <SpiritualButtons onSelect={setActiveTab} />
       </footer>
 
-      <AudioControls />
-
       <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} />
       <CreditPackagesModal isOpen={showPackages} onClose={() => setShowPackages(false)} userId={user?.uid} />
       <FreeLimitModal isOpen={showFreeLimit} onClose={() => setShowFreeLimit(false)} onPurchaseCredits={() => { setShowFreeLimit(false); setShowPackages(true); }} />
+
+      {/* Floating Support Button */}
+      <a 
+        href="https://chat.whatsapp.com/KaoahGV7sPL0Nq6s4zXZAQ" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="fixed bottom-36 right-6 z-[60] bg-emerald-500 text-white p-4 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:scale-110 transition-all group lg:bottom-12"
+        title="Suporte WhatsApp"
+      >
+        <MessageCircle size={24} fill="currentColor" className="text-white" />
+        <span className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-black/80 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-emerald-500/30">
+          Suporte Pablo
+        </span>
+      </a>
 
       {/* Payment Success Notification */}
       <AnimatePresence>
