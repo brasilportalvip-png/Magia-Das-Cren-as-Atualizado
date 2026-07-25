@@ -4,7 +4,7 @@ import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = getFirestore(app, "cigano");
 export const auth = getAuth(app);
 
 export enum OperationType {
@@ -25,7 +25,7 @@ export interface FirestoreErrorInfo {
     email?: string | null;
     emailVerified?: boolean | null;
     isAnonymous?: boolean | null;
-  }
+  };
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
@@ -40,19 +40,19 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
+
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
 
 async function testConnection() {
   try {
-    // Attempt a silent read to check connection
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
-    // Ignore permission errors as they still indicate a successful connection attempt
     if (error instanceof Error && error.message.includes('offline')) {
       console.warn("Firestore appears to be offline.");
     }
   }
 }
-// testConnection(); // Disabled to avoid console noise during auth transitions
+
+// testConnection();

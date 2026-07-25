@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import { Message, SpiritualUser } from "../types/spiritual";
 import { PABLO_SYSTEM_INSTRUCTION } from "../lib/gemini";
+import { drawPabloTarotCards, formatPabloTarotCards } from "../lib/tarotPablo";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
@@ -14,7 +15,22 @@ interface ChatSectionProps {
   initialMessage?: string;
 }
 
+
+
+
+
+
+const CHAT_SESSION_KEY = "magia_crencas_chat_session";
+const CHAT_SESSION_OPEN_KEY = "magia_crencas_chat_open";
+
+
+
+
+
+
+
 const QUICK_SUGGESTIONS = [
+
   { label: "Amor", icon: <Heart size={16} fill="currentColor" />, color: "text-rose-400", glow: "shadow-[0_0_20px_rgba(244,63,94,0.6)]", gradient: "from-rose-500 to-rose-700", border: "border-rose-400/60" },
   { label: "Dinheiro", icon: <DollarSign size={16} />, color: "text-emerald-400", glow: "shadow-[0_0_20px_rgba(16,185,129,0.6)]", gradient: "from-emerald-500 to-emerald-700", border: "border-emerald-400/60" },
   { label: "Saúde", icon: <Activity size={16} />, color: "text-cyan-400", glow: "shadow-[0_0_20px_rgba(6,182,212,0.6)]", gradient: "from-cyan-500 to-cyan-700", border: "border-cyan-400/60" },
@@ -32,17 +48,77 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
     }
   ]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+const [isLoading, setIsLoading] = useState(false);
+
+
+
+
+
+
+
+
+useEffect(() => {
+  try {
+    const isOpenSession = sessionStorage.getItem(CHAT_SESSION_OPEN_KEY);
+    const savedSession = sessionStorage.getItem(CHAT_SESSION_KEY);
+
+    if (isOpenSession && savedSession) {
+      const parsed = JSON.parse(savedSession);
+
+      if (Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+        setMessages(parsed.messages);
+      }
+
+      if (typeof parsed.input === "string") {
+        setInput(parsed.input);
+      }
+    } else {
+      sessionStorage.removeItem(CHAT_SESSION_KEY);
+      sessionStorage.setItem(CHAT_SESSION_OPEN_KEY, "true");
+    }
+  } catch (error) {
+    console.error("Erro ao restaurar sessão do Magia das Crenças:", error);
+    sessionStorage.removeItem(CHAT_SESSION_KEY);
+    sessionStorage.setItem(CHAT_SESSION_OPEN_KEY, "true");
+  }
+}, []);
+
+
+
+
+
+
+useEffect(() => {
+  try {
+    sessionStorage.setItem(
+      CHAT_SESSION_KEY,
+      JSON.stringify({
+        messages,
+        input
+      })
+    );
+  } catch (error) {
+    console.error("Erro ao salvar sessão do Magia das Crenças:", error);
+  }
+}, [messages, input]);
+
+
+
+
+
   
   // Use a ref to track if we've already triggered the initial message to avoid loops
   const triggeredRef = useRef(false);
 
-  useEffect(() => {
-    if (initialMessage && !triggeredRef.current) {
-        triggeredRef.current = true;
-        handleSendMessage(initialMessage);
-    }
-  }, [initialMessage]);
+
+ useEffect(() => {
+  if (initialMessage && !triggeredRef.current && messages.length <= 1) {
+      triggeredRef.current = true;
+      handleSendMessage(initialMessage);
+  }
+}, [initialMessage, messages.length]);
+
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -66,9 +142,75 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
         setMessages(prev => [...prev, { role: 'model', content: "Por favor, identifique-se no painel ao lado para que possamos ler seu destino.", timestamp: Date.now() }]);
         return;
     }
-    const lowerText = text.toLowerCase();
-    let amount = 1;
-    if (lowerText.includes("tarot")) amount = 3;
+   
+
+
+const lowerText = text.toLowerCase();
+const isTarotConsultation = lowerText.includes("tarot");
+
+const isLoveQuestion =
+  lowerText.includes("amor") ||
+  lowerText.includes("relacionamento") ||
+  lowerText.includes("ex") ||
+  lowerText.includes("ela") ||
+  lowerText.includes("ele") ||
+  lowerText.includes("gosta de mim") ||
+  lowerText.includes("me ama") ||
+  lowerText.includes("trai") ||
+  lowerText.includes("saudade") ||
+  lowerText.includes("paixão") ||
+  lowerText.includes("paixao") ||
+  lowerText.includes("volta") ||
+  lowerText.includes("ficante") ||
+  lowerText.includes("casamento") ||
+  lowerText.includes("namoro");
+
+
+
+const hasBirthDate =
+  /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/.test(text) ||
+  /\bnascid[ao]\b/i.test(text);
+
+const hasOtherPersonName =
+  /\bcom\s+[a-záàâãéêíóôõúç]+/i.test(text) ||
+  /\bde\s+[a-záàâãéêíóôõúç]+/i.test(text) ||
+  /\bnome\s+[a-záàâãéêíóôõúç]+/i.test(text);
+
+
+const isSpecificLoveQuestion =
+  /\b(ex|meu ex|minha ex|ele|ela|namorado|namorada|marido|esposa|ficante|amante|rival|trai|traição|traicao|volta|voltar|retorno|reconciliação|reconciliacao|saudade|sente algo|sentimento|gosta de mim|me ama|pensa em mim|vai me procurar|me procura|outra pessoa|alguém|alguem)\b/i.test(text) ||
+  hasOtherPersonName;
+
+const isGeneralLoveReading =
+  isLoveQuestion && !isSpecificLoveQuestion;
+
+if (isLoveQuestion && isSpecificLoveQuestion && (!hasOtherPersonName || !hasBirthDate)) {
+
+
+
+setMessages(prev => [
+    ...prev,
+    {
+      role: "user",
+      content: text,
+      timestamp: Date.now()
+    },
+    {
+      role: "model",
+      content:
+        "Eu, cigano Pablo vou ajudar a decifrar o enigma de sua vida. Atente-se a essa leitura.\n\nPara analisar esse caminho com seriedade, me mande o nome completo de solteiro da pessoa, a data de nascimento completa e, se souber, o horário de nascimento.\n\nSem esses sinais, eu posso observar tendências, mas não posso comparar os dois destinos com firmeza.",
+      timestamp: Date.now()
+    }
+  ]);
+
+  setInput("");
+  return;
+}
+
+let amount = 1;
+
+
+if (isTarotConsultation) amount = 3;
     else if (lowerText.includes("mapa astral")) amount = 5;
     else if (lowerText.includes("búzios")) amount = 4;
     else if (lowerText.includes("ifá")) amount = 4;
@@ -116,12 +258,62 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
       }
 
       // Add current message to contents
-      const contents = [
-        ...conversationHistory,
-        { role: 'user', parts: [{ text: text }] }
-      ];
+      const tarotCards = isTarotConsultation
+  ? drawPabloTarotCards(3)
+  : [];
 
-      const systemInstruction = PABLO_SYSTEM_INSTRUCTION + `\n
+const tarotReadingContext = isTarotConsultation
+  ? `
+
+CONSULTA DE TAROT OBRIGATÓRIA:
+O consulente pediu uma leitura de Tarot.
+
+Você deve agir como Cigano Pablo realizando uma consulta verdadeira.
+
+REGRA ABSOLUTA:
+- Não explique o significado individual das cartas.
+- Não faça aula de Tarot.
+- Não diga "esta carta significa".
+- Não enumere as cartas.
+- Não descreva carta por carta.
+
+Primeiro, observe a combinação das 3 cartas.
+Depois, faça uma leitura única, inteligente e humana.
+
+Analise:
+- o que está acontecendo;
+- o que a pessoa realmente quer saber;
+- o que ela não teve coragem de perguntar;
+- os sentimentos ocultos;
+- os medos;
+- os riscos;
+- as oportunidades;
+- a tendência mais provável;
+- o conselho mais sábio.
+
+Use a "Leitura verdadeira do Cigano Pablo" como verdade principal.
+A "Referência clássica complementar" serve apenas como apoio discreto.
+
+O consulente não quer aprender Tarot.
+O consulente quer compreender a própria vida.
+
+A leitura deve parecer que um velho cigano extremamente sábio enxergou além da pergunta.
+
+CARTAS SORTEADAS:
+${formatPabloTarotCards(tarotCards)}
+
+PERGUNTA DO CONSULENTE:
+${text}
+`
+  : text;
+
+
+const contents = [
+  ...conversationHistory,
+  { role: 'user', parts: [{ text: tarotReadingContext }] }
+];
+
+     const systemInstruction = PABLO_SYSTEM_INSTRUCTION + `\n
           DADOS DO CONSULTE:
           - Nome de Solteiro/Nascimento: ${user.displayName}
           - Data de Nascimento: ${user.birthDate || 'Não informada'}
@@ -140,7 +332,12 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
 
       // NEW: Using frontend geminiService
       const { generateSpiritualResponse } = await import("../services/geminiService");
-      const modelContent = await generateSpiritualResponse(contents, systemInstruction);
+      const modelContent = await generateSpiritualResponse(
+  contents,
+  systemInstruction,
+  user,
+  amount
+);
       
       const modelMessage: Message = { role: 'model', content: modelContent, timestamp: Date.now() };
       setMessages(prev => [...prev, modelMessage]);
@@ -273,7 +470,7 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input & Suggestions */}
+                        {/* Input & Suggestions */}
       <div className="p-4 border-t border-white/10 bg-black/40">
         <div className="flex gap-2 lg:gap-2.5 overflow-x-auto pb-4 pt-1 scrollbar-none px-4 lg:px-6">
           {QUICK_SUGGESTIONS.map((s) => (
@@ -286,7 +483,7 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
             >
               {/* Inner Light Effect */}
               <div className="absolute inset-x-0 top-0 h-1/2 bg-white/20 blur-sm group-hover:bg-white/30 transition-colors" />
-              <div className={`absolute inset-0 bg-white/10 opacity-40 group-hover:opacity-60 transition-opacity`} />
+              <div className="absolute inset-0 bg-white/10 opacity-40 group-hover:opacity-60 transition-opacity" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
               
               {/* Icon and Text */}
