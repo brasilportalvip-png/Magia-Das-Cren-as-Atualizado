@@ -489,55 +489,86 @@ Interprete a combinação como uma leitura única e coerente para a pergunta do 
 
     let lastError: any = null;
 
-   for (let index = 0; index < uniqueModels.length; index++) {
+   
+
+
+
+for (let index = 0; index < uniqueModels.length; index++) {
   const model = uniqueModels[index];
 
-  console.log(`[GEMINI_TRY] Tentando modelo: ${model}`);
-
-  try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        systemInstruction:
-          systemInstruction ||
-          "Você é Cigano Pablo, guia espiritual do Magia das Crenças.",
-        maxOutputTokens: 3000
-      }
-    });
-
-    const text = response.text?.trim();
-
-    if (!text) {
-      throw new Error(`Resposta vazia do modelo ${model}.`);
-    }
-
-    console.log(`[GEMINI_SUCCESS] Modelo respondeu: ${model}`);
-
-    return res.status(200).json({
-      success: true,
-      text,
-      model
-    });
-  } catch (error: any) {
-    console.error(
-      `[GEMINI_MODEL_ERROR] ${model}`,
-      error?.message || error
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    console.log(
+      `[GEMINI_TRY] Tentando modelo: ${model} | tentativa ${attempt}/2`
     );
 
-    lastError = error;
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          systemInstruction:
+            systemInstruction ||
+            "Você é Cigano Pablo, guia espiritual do Magia das Crenças.",
+          maxOutputTokens: 3000
+        }
+      });
 
-    if (index < uniqueModels.length - 1) {
-      console.warn(
-        `[GEMINI_FALLBACK] ${model} falhou. Próximo modelo em 2 segundos.`
+      const text = response.text?.trim();
+
+      if (!text) {
+        throw new Error(`Resposta vazia do modelo ${model}.`);
+      }
+
+      console.log(
+        `[GEMINI_SUCCESS] Modelo respondeu: ${model} | tentativa ${attempt}/2`
       );
 
-      await new Promise((resolve) =>
-        setTimeout(resolve, 2000)
+      return res.status(200).json({
+        success: true,
+        text,
+        model
+      });
+    } catch (error: any) {
+      console.error(
+        `[GEMINI_MODEL_ERROR] ${model} | tentativa ${attempt}/2`,
+        error?.message || error
       );
+
+      lastError = error;
+
+      if (attempt < 2) {
+        const retryDelay = attempt * 2000;
+
+        console.warn(
+          `[GEMINI_RETRY] ${model} falhou. Nova tentativa em ${retryDelay / 1000}s.`
+        );
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, retryDelay)
+        );
+
+        continue;
+      }
+
+      if (index < uniqueModels.length - 1) {
+        console.warn(
+          `[GEMINI_FALLBACK] ${model} falhou nas duas tentativas. Próximo modelo em 2 segundos.`
+        );
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, 2000)
+        );
+      }
     }
   }
 }
+
+
+
+
+
+
+
     return res.status(502).json({
       success: false,
       error:
