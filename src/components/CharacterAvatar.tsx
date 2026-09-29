@@ -1,8 +1,6 @@
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 
-const PABLO_VIDEO_URL =
-  "https://portalvipbrasil.com.br/wp-content/uploads/2026/06/Cigano-Pablo-otimizado.mp4";
 
 export default function CharacterAvatar() {
   const [blink, setBlink] = useState(false);
@@ -19,18 +17,11 @@ export default function CharacterAvatar() {
   return (
     <div className="relative w-full h-full min-h-[300px] flex flex-col items-center justify-center overflow-hidden">
       {/* Vídeo de fundo */}
-      <video
-  autoPlay
-  muted
-  loop
-  playsInline
-  onLoadedMetadata={(e) => {
-    e.currentTarget.playbackRate = 1;
-  }}
+      <img
+  src="/image/Magia Das Crenças Fundo.png"
+  alt=""
   className="absolute inset-0 w-full h-full object-cover opacity-20"
->
-        <source src={PABLO_VIDEO_URL} type="video/mp4" />
-      </video>
+/>
 
       {/* Escurecimento do fundo */}
       <div className="absolute inset-0 bg-black/60 z-[1]" />
@@ -73,15 +64,11 @@ export default function CharacterAvatar() {
             transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
             className="w-[200px] h-[200px] xs:w-[240px] xs:h-[240px] md:w-[280px] md:h-[280px] lg:w-[320px] lg:h-[320px] xl:w-[380px] xl:h-[380px] relative rounded-full overflow-hidden border-4 border-amber-500/60 shadow-[0_0_120px_rgba(245,158,11,0.45)] bg-black/70 group-hover:border-amber-400 transition-colors"
           >
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              className="w-full h-full object-cover opacity-95 scale-105 group-hover:scale-110 transition-transform duration-700"
-            >
-              <source src={PABLO_VIDEO_URL} type="video/mp4" />
-            </video>
+            <img
+  src="/image/Magia Das Crenças Logo.png"
+  alt="Cigano Pablo"
+  className="w-full h-full object-cover opacity-95 scale-105 group-hover:scale-110 transition-transform duration-700"
+/>
 
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 z-10" />
 

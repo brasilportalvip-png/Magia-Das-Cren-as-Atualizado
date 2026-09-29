@@ -54,13 +54,13 @@ export default function UserPanel({ user, onSelectConsultation, onEditProfile, a
       {/* Profile Header */}
       <div className="flex items-center gap-4 border-b border-white/5 pb-6">
         <div className="relative">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center overflow-hidden">
-             {user.photoURL ? (
-               <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
-             ) : (
-               <User className="text-amber-500" size={24} />
-             )}
-          </div>
+         <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center overflow-hidden">
+  <img
+    src="/image/Magia Das Crenças Logo.png"
+    alt="Cigano Pablo"
+    className="w-full h-full object-cover"
+  />
+</div>
           <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-4 border-[#0a0a0c] rounded-full" />
         </div>
         <div className="flex-1 min-w-0">

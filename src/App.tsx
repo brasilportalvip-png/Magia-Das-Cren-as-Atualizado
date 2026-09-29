@@ -219,19 +219,11 @@ if (urlParams.get("payment") !== "success") {
   return (
     <div className="min-h-screen lg:h-screen w-full bg-transparent text-white relative overflow-x-hidden lg:overflow-hidden flex flex-col font-sans select-none border-0 overflow-y-auto">
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-
-  <video
-  autoPlay
-  muted
-  loop
-  playsInline
-  className="absolute inset-0 w-full h-full object-cover"
->
-  <source
-    src="https://portalvipbrasil.com.br/wp-content/uploads/2026/06/Cigano-Pablo-otimizado.mp4"
-    type="video/mp4"
+  <img
+    src="/image/Magia Das Crenças Fundo.png"
+    alt=""
+    className="absolute inset-0 w-full h-full object-cover"
   />
-</video>
 </div>
       <header className="relative z-40 px-4 py-4 lg:px-8 lg:py-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5 backdrop-blur-xl bg-black/40 sticky top-0 shrink-0">
         <div className="flex items-center gap-3 lg:gap-6 min-h-[40px] lg:min-h-[64px] w-full sm:w-auto">
@@ -337,8 +329,10 @@ if (urlParams.get("payment") !== "success") {
             </div>
 
             <div className="w-full lg:w-[350px] shrink-0 bg-white/5 backdrop-blur-xl rounded-[32px] border border-white/10 p-6 lg:p-8 flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden h-fit lg:h-full">
-              <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://portalvipbrasil.com.br/wp-content/uploads/2026/05/bg-pattern.png')] bg-repeat"></div>
-
+              <div
+  className="absolute inset-0 opacity-10 pointer-events-none bg-cover bg-center"
+  style={{ backgroundImage: "url('/image/Magia Das Crenças Fundo.png')" }}
+></div>
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 20, repeat: Infinity, ease: "linear" }}

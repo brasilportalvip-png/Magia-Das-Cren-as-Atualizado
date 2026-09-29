@@ -328,14 +328,25 @@ plan: 'free',
             className="w-full max-w-md bg-[#0a0a0c] border border-amber-500/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(245,158,11,0.15)] my-auto"
           >
             <div className="p-8 space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-serif italic text-amber-100 flex items-center gap-2">
-                  <Sparkles className="text-amber-500" size={20} />
-                  {mode === 'login' && 'Portal de Acesso'}
-                  {mode === 'register' && 'Novo Despertar'}
-                  {mode === 'forgot' && 'Recordar Caminho'}
-                  {mode === 'complete_profile' && 'Consagrar Perfil'}
-                </h2>
+
+  <div className="flex justify-center">
+    <div className="h-24 w-24 overflow-hidden rounded-full border-2 border-amber-500 shadow-[0_0_35px_rgba(245,158,11,0.65)]">
+      <img
+        src="/image/Magia Das Crenças Logo.png"
+        alt="Cigano Pablo"
+        className="h-full w-full object-cover"
+      />
+    </div>
+  </div>
+
+  <div className="flex justify-between items-center">
+    <h2 className="text-2xl font-serif italic text-amber-100 flex items-center gap-2">
+      <Sparkles className="text-amber-500" size={20} />
+      {mode === 'login' && 'Portal de Acesso'}
+      {mode === 'register' && 'Novo Despertar'}
+      {mode === 'forgot' && 'Recordar Caminho'}
+      {mode === 'complete_profile' && 'Consagrar Perfil'}
+    </h2>
 
                 <button onClick={onClose} className="p-2 text-white/40 hover:text-white transition-colors">
                   <X size={20} />

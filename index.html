@@ -1,13 +1,413 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<html lang="pt-BR">
 
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  />
+
+  <!-- =========================================================
+       SEO PRINCIPAL
+  ========================================================== -->
+
+  <title>Magia das Crenças | Cigano Pablo, Tarot, Búzios, Ifá, Odu e Mapa Astral</title>
+
+  <meta
+    name="description"
+    content="Consulte o Cigano Pablo no Magia das Crenças. Tarot online, Búzios, Ifá, Odu, Orixás, Numerologia, Mapa Astral, Anjo Guardião e orientações sobre amor, dinheiro, trabalho, família, espiritualidade e caminhos."
+  />
+
+  <meta
+    name="keywords"
+    content="Magia das Crenças, Cigano Pablo, consulta Cigano Pablo, tarot online, tarot Cigano Pablo, consulta espiritual online, oráculo online, búzios online, jogo de búzios, Ifá online, consulta Ifá, Odu, Odu de nascimento, Orixás, descobrir Orixá, numerologia, numerologia do nome, mapa astral, mapa astral online, astrologia, signo, anjo guardião, descobrir anjo guardião, daimons, espiritualidade, consulta amorosa, tarot amor, amor, relacionamento, reconciliação amorosa, ex namorado, ex namorada, caminhos espirituais, abertura de caminhos, prosperidade, dinheiro, trabalho, família, saúde espiritual, destino, autoconhecimento, previsão espiritual, orientação espiritual, cartas de tarot, leitura de tarot, tarot de 3 cartas, consulta esotérica, consulta mística, oráculos espirituais"
+  />
+
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1" />
+
+  <meta name="author" content="Magia das Crenças" />
+  <meta name="publisher" content="Magia das Crenças" />
+  <meta name="language" content="pt-BR" />
+  <meta name="content-language" content="pt-BR" />
+  <meta name="application-name" content="Magia das Crenças" />
+
+  <meta
+    name="subject"
+    content="Tarot, Búzios, Ifá, Odu, Orixás, Numerologia, Astrologia e Orientação Espiritual"
+  />
+
+  <meta
+    name="classification"
+    content="Espiritualidade, Esoterismo, Tarot, Oráculos e Autoconhecimento"
+  />
+
+  <meta name="theme-color" content="#090705" />
+  <meta name="color-scheme" content="dark" />
+
+  <!-- =========================================================
+       URL OFICIAL
+  ========================================================== -->
+
+  <link
+    rel="canonical"
+    href="https://www.magiadascrencas.com.br/"
+  />
+
+  <link
+    rel="alternate"
+    hreflang="pt-BR"
+    href="https://www.magiadascrencas.com.br/"
+  />
+
+  <link
+    rel="alternate"
+    hreflang="x-default"
+    href="https://www.magiadascrencas.com.br/"
+  />
+
+  <!-- =========================================================
+       ÍCONE / LOGO
+  ========================================================== -->
+
+  <link
+    rel="icon"
+    type="image/png"
+    href="/image/Magia%20Das%20Cren%C3%A7as%20Logo.png"
+  />
+
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    href="/image/Magia%20Das%20Cren%C3%A7as%20Logo.png"
+  />
+
+  <link
+    rel="apple-touch-icon"
+    href="/image/Magia%20Das%20Cren%C3%A7as%20Logo.png"
+  />
+
+  <!-- =========================================================
+       OPEN GRAPH
+       FACEBOOK / WHATSAPP / TELEGRAM
+  ========================================================== -->
+
+  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:type" content="website" />
+
+  <meta
+    property="og:url"
+    content="https://www.magiadascrencas.com.br/"
+  />
+
+  <meta
+    property="og:site_name"
+    content="Magia das Crenças"
+  />
+
+  <meta
+    property="og:title"
+    content="Magia das Crenças | Consulte o Cigano Pablo"
+  />
+
+  <meta
+    property="og:description"
+    content="Entre no universo do Cigano Pablo e consulte Tarot, Búzios, Ifá, Odu, Orixás, Numerologia, Mapa Astral, Anjo Guardião e outros caminhos de autoconhecimento."
+  />
+
+  <meta
+    property="og:image"
+    content="https://www.magiadascrencas.com.br/image/Magia%20Das%20Cren%C3%A7as%20Logo.png"
+  />
+
+  <meta
+    property="og:image:secure_url"
+    content="https://www.magiadascrencas.com.br/image/Magia%20Das%20Cren%C3%A7as%20Logo.png"
+  />
+
+  <meta
+    property="og:image:type"
+    content="image/png"
+  />
+
+  <meta
+    property="og:image:alt"
+    content="Magia das Crenças com Cigano Pablo"
+  />
+
+  <!-- =========================================================
+       TWITTER / X
+  ========================================================== -->
+
+  <meta
+    name="twitter:card"
+    content="summary_large_image"
+  />
+
+  <meta
+    name="twitter:title"
+    content="Magia das Crenças | Cigano Pablo"
+  />
+
+  <meta
+    name="twitter:description"
+    content="Tarot, Búzios, Ifá, Odu, Orixás, Numerologia, Mapa Astral e orientação espiritual com Cigano Pablo."
+  />
+
+  <meta
+    name="twitter:image"
+    content="https://www.magiadascrencas.com.br/image/Magia%20Das%20Cren%C3%A7as%20Logo.png"
+  />
+
+  <meta
+    name="twitter:image:alt"
+    content="Magia das Crenças com Cigano Pablo"
+  />
+
+  <!-- =========================================================
+       DADOS ESTRUTURADOS - SITE
+  ========================================================== -->
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "https://www.magiadascrencas.com.br/#website",
+    "url": "https://www.magiadascrencas.com.br/",
+    "name": "Magia das Crenças",
+    "alternateName": [
+      "Magia das Crenças com Cigano Pablo",
+      "Cigano Pablo"
+    ],
+    "description": "Portal de espiritualidade e autoconhecimento com Tarot, Búzios, Ifá, Odu, Orixás, Numerologia, Mapa Astral, Anjo Guardião e outros oráculos.",
+    "inLanguage": "pt-BR",
+    "image": "https://www.magiadascrencas.com.br/image/Magia%20Das%20Cren%C3%A7as%20Logo.png"
+  }
+  </script>
+
+  <!-- =========================================================
+       DADOS ESTRUTURADOS - PÁGINA
+  ========================================================== -->
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "@id": "https://www.magiadascrencas.com.br/#webpage",
+    "url": "https://www.magiadascrencas.com.br/",
+    "name": "Magia das Crenças | Cigano Pablo",
+    "description": "Portal de consultas, oráculos e ferramentas de autoconhecimento espiritual com Cigano Pablo.",
+    "isPartOf": {
+      "@id": "https://www.magiadascrencas.com.br/#website"
+    },
+    "inLanguage": "pt-BR",
+    "primaryImageOfPage": {
+      "@type": "ImageObject",
+      "url": "https://www.magiadascrencas.com.br/image/Magia%20Das%20Cren%C3%A7as%20Logo.png"
+    }
+  }
+  </script>
+
+  <!-- =========================================================
+       DADOS ESTRUTURADOS - SERVIÇOS / ORÁCULOS
+  ========================================================== -->
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "@id": "https://www.magiadascrencas.com.br/#consultas",
+    "name": "Consultas e Oráculos Magia das Crenças",
+    "url": "https://www.magiadascrencas.com.br/",
+    "description": "Experiência online de consulta e autoconhecimento com Cigano Pablo através de diferentes tradições e sistemas simbólicos.",
+    "provider": {
+      "@type": "Organization",
+      "name": "Magia das Crenças",
+      "url": "https://www.magiadascrencas.com.br/"
+    },
+    "areaServed": {
+      "@type": "Country",
+      "name": "Brasil"
+    },
+    "availableLanguage": "Portuguese",
+    "serviceType": [
+      "Tarot",
+      "Búzios",
+      "Ifá",
+      "Odu",
+      "Orixás",
+      "Numerologia",
+      "Mapa Astral",
+      "Astrologia",
+      "Anjo Guardião",
+      "Daimons",
+      "Orientação espiritual",
+      "Orientação amorosa",
+      "Autoconhecimento"
+    ]
+  }
+  </script>
+
+  <!-- =========================================================
+       DADOS ESTRUTURADOS - CATÁLOGO DOS ORÁCULOS
+  ========================================================== -->
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": "Oráculos disponíveis no Magia das Crenças",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Tarot"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Búzios"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "Ifá"
+      },
+      {
+        "@type": "ListItem",
+        "position": 4,
+        "name": "Odu"
+      },
+      {
+        "@type": "ListItem",
+        "position": 5,
+        "name": "Orixás"
+      },
+      {
+        "@type": "ListItem",
+        "position": 6,
+        "name": "Numerologia"
+      },
+      {
+        "@type": "ListItem",
+        "position": 7,
+        "name": "Mapa Astral"
+      },
+      {
+        "@type": "ListItem",
+        "position": 8,
+        "name": "Anjo Guardião"
+      },
+      {
+        "@type": "ListItem",
+        "position": 9,
+        "name": "Daimons"
+      }
+    ]
+  }
+  </script>
+
+  <!-- =========================================================
+       FAQ PARA MECANISMOS DE BUSCA
+  ========================================================== -->
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "O que é o Magia das Crenças?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Magia das Crenças é uma plataforma online voltada à espiritualidade, aos oráculos e ao autoconhecimento, conduzida pela identidade do Cigano Pablo."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Quais oráculos estão disponíveis no Magia das Crenças?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "O site possui Tarot, Búzios, Ifá, Odu, Orixás, Numerologia, Mapa Astral, Anjo Guardião e Daimons."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Posso fazer uma consulta de Tarot online?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Sim. O Magia das Crenças possui uma experiência de Tarot online com seleção de cartas e interpretação conduzida pelo Cigano Pablo."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Posso perguntar sobre amor e relacionamento?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Sim. O chat permite consultas relacionadas a amor, relacionamentos, sentimentos, reconciliação e outros assuntos afetivos."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "O site também aborda dinheiro e trabalho?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Sim. Entre os temas disponíveis estão dinheiro, trabalho, família, espiritualidade e outros aspectos da vida."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "O Magia das Crenças possui numerologia e mapa astral?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Sim. Numerologia e Mapa Astral fazem parte dos caminhos de consulta disponíveis na plataforma."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Quem é a identidade espiritual apresentada no site?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A experiência do Magia das Crenças é apresentada através da identidade do Cigano Pablo."
+        }
+      }
+    ]
+  }
+  </script>
+
+</head>
+
+<body>
+
+  <div id="root"></div>
+
+  <noscript>
+    <section>
+      <h1>Magia das Crenças com Cigano Pablo</h1>
+
+      <p>
+        O Magia das Crenças reúne Tarot, Búzios, Ifá, Odu,
+        Orixás, Numerologia, Mapa Astral, Anjo Guardião,
+        Daimons e diferentes caminhos de autoconhecimento.
+      </p>
+
+      <p>
+        Consulte temas como amor, relacionamentos, dinheiro,
+        trabalho, família, espiritualidade e caminhos pessoais.
+      </p>
+
+      <p>
+        Ative o JavaScript no seu navegador para acessar
+        todas as funcionalidades do site.
+      </p>
+    </section>
+  </noscript>
+
+  <script type="module" src="/src/main.tsx"></script>
+
+</body>
+
+</html>
