@@ -4,7 +4,8 @@ export async function generateSpiritualResponse(
   messages: any[],
   systemInstruction: string,
   user?: any,
-  cost?: number
+  cost?: number,
+  oracleContext?: any
 ) {
   try {
     const lastMessage =
@@ -30,11 +31,12 @@ export async function generateSpiritualResponse(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        message: messageText,
-        systemInstruction: systemInstruction || PABLO_SYSTEM_INSTRUCTION,
-        user,
-        cost,
-      }),
+  message: messageText,
+  systemInstruction: systemInstruction || PABLO_SYSTEM_INSTRUCTION,
+  user,
+  cost,
+  oracleContext,
+}),
     });
 
     const data = await response.json();

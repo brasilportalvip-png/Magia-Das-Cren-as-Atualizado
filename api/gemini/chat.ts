@@ -442,7 +442,7 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    const { message, user, systemInstruction } = req.body || {};
+    const { message, user, systemInstruction, oracleContext } = req.body || {};
 
     if (!message || typeof message !== "string") {
       return res.status(400).json({
@@ -453,7 +453,31 @@ export default async function handler(req: any, res: any) {
 
     const ai = new GoogleGenAI({ apiKey });
 
-    const prompt = buildPabloPrompt(message, user);
+    let prompt = buildPabloPrompt(message, user);
+
+if (oracleContext?.oracle === "tarot") {
+  prompt += `
+
+==================================================
+CONTEXTO ESTRUTURADO DO ORÁCULO
+==================================================
+
+ORÁCULO UTILIZADO:
+Tarot
+
+CARTAS SORTEADAS:
+${oracleContext.formattedCards || "Não informado"}
+
+PERGUNTA ORIGINAL:
+${oracleContext.originalQuestion || message}
+
+REGRA:
+Use obrigatoriamente as cartas acima como base principal da leitura.
+Não invente outras cartas.
+Não ignore a combinação sorteada.
+Interprete a combinação como uma leitura única e coerente para a pergunta do consulente.
+`;
+}
 
     const models = [
       process.env.GEMINI_PRIMARY_MODEL?.trim(),

@@ -332,11 +332,21 @@ const contents = [
 
       // NEW: Using frontend geminiService
       const { generateSpiritualResponse } = await import("../services/geminiService");
-      const modelContent = await generateSpiritualResponse(
+      const oracleContext = isTarotConsultation
+  ? {
+      oracle: "tarot",
+      cards: tarotCards,
+      formattedCards: formatPabloTarotCards(tarotCards),
+      originalQuestion: text,
+    }
+  : undefined;
+
+const modelContent = await generateSpiritualResponse(
   contents,
   systemInstruction,
   user,
-  amount
+  amount,
+  oracleContext
 );
       
       const modelMessage: Message = { role: 'model', content: modelContent, timestamp: Date.now() };
