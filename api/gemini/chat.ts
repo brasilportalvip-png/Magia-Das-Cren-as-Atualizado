@@ -530,9 +530,19 @@ for (let index = 0; index < uniqueModels.length; index++) {
       });
     } catch (error: any) {
       console.error(
-        `[GEMINI_MODEL_ERROR] ${model} | tentativa ${attempt}/2`,
-        error?.message || error
-      );
+  `[GEMINI_MODEL_ERROR] ${model} | tentativa ${attempt}/2`,
+  JSON.stringify(
+    {
+      message: error?.message,
+      status: error?.status,
+      code: error?.code,
+      name: error?.name,
+      error: error?.error,
+    },
+    null,
+    2
+  )
+);
 
       lastError = error;
 
