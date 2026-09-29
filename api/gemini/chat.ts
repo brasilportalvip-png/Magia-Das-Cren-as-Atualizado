@@ -480,45 +480,50 @@ Interprete a combinação como uma leitura única e coerente para a pergunta do 
 }
 
     const models = [
-      process.env.GEMINI_PRIMARY_MODEL?.trim(),
-      process.env.GEMINI_SECONDARY_MODEL?.trim(),
-      process.env.GEMINI_LITE_MODEL?.trim(),
-      "gemini-2.5-flash"
-    ].filter(Boolean) as string[];
+  process.env.GEMINI_PRIMARY_MODEL?.trim(),
+  process.env.GEMINI_SECONDARY_MODEL?.trim(),
+  process.env.GEMINI_LITE_MODEL?.trim(),
+].filter(Boolean) as string[];
 
     const uniqueModels = [...new Set(models)];
 
     let lastError: any = null;
 
-    for (const model of uniqueModels) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: prompt,
-          config: {
-            systemInstruction:
-              systemInstruction ||
-              "Você é Cigano Pablo, guia espiritual do Magia das Crenças.",
-            maxOutputTokens: 3000
-          }
-        });
+   for (let index = 0; index < uniqueModels.length; index++) {
+  const model = uniqueModels[index];
 
-        const text = response.text?.trim();
-
-        if (!text) {
-          throw new Error(`Resposta vazia do modelo ${model}.`);
-        }
-
-        return res.status(200).json({
-          success: true,
-          text,
-          model
-        });
-      } catch (error: any) {
-        console.error("[GEMINI_MODEL_ERROR]", model, error);
-        lastError = error;
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        systemInstruction:
+          systemInstruction ||
+          "Você é Cigano Pablo, guia espiritual do Magia das Crenças.",
+        maxOutputTokens: 3000
       }
+    });
+
+    const text = response.text?.trim();
+
+    if (!text) {
+      throw new Error(`Resposta vazia do modelo ${model}.`);
     }
+
+    return res.status(200).json({
+      success: true,
+      text,
+      model
+    });
+  } catch (error: any) {
+    console.error("[GEMINI_MODEL_ERROR]", model, error);
+    lastError = error;
+
+    if (index < uniqueModels.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
+}
 
     return res.status(502).json({
       success: false,
