@@ -492,6 +492,8 @@ Interprete a combinação como uma leitura única e coerente para a pergunta do 
    for (let index = 0; index < uniqueModels.length; index++) {
   const model = uniqueModels[index];
 
+  console.log(`[GEMINI_TRY] Tentando modelo: ${model}`);
+
   try {
     const response = await ai.models.generateContent({
       model,
@@ -510,21 +512,32 @@ Interprete a combinação como uma leitura única e coerente para a pergunta do 
       throw new Error(`Resposta vazia do modelo ${model}.`);
     }
 
+    console.log(`[GEMINI_SUCCESS] Modelo respondeu: ${model}`);
+
     return res.status(200).json({
       success: true,
       text,
       model
     });
   } catch (error: any) {
-    console.error("[GEMINI_MODEL_ERROR]", model, error);
+    console.error(
+      `[GEMINI_MODEL_ERROR] ${model}`,
+      error?.message || error
+    );
+
     lastError = error;
 
     if (index < uniqueModels.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.warn(
+        `[GEMINI_FALLBACK] ${model} falhou. Próximo modelo em 2 segundos.`
+      );
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, 2000)
+      );
     }
   }
 }
-
     return res.status(502).json({
       success: false,
       error:
