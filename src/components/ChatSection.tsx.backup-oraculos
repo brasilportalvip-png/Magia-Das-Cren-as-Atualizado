@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import { Message, SpiritualUser } from "../types/spiritual";
 import { PABLO_SYSTEM_INSTRUCTION } from "../lib/gemini";
+import { drawPabloTarotCards, formatPabloTarotCards } from "../lib/tarotPablo";
 import {
   buildPabloOracleEngine,
   type PabloOracleSessionState,
@@ -224,14 +225,12 @@ let amount = 1;
 
 if (isTarotConsultation) amount = 3;
     else if (lowerText.includes("mapa astral")) amount = 5;
-    else if (lowerText.includes("búzios") || lowerText.includes("buzios")) amount = 4;
+    else if (lowerText.includes("búzios")) amount = 4;
     else if (lowerText.includes("ifá")) amount = 4;
     else if (lowerText.includes("odu")) amount = 2;
-    else if (lowerText.includes("orixás") || lowerText.includes("orixas")) amount = 4;
+    else if (lowerText.includes("orixás")) amount = 4;
     else if (lowerText.includes("numerologia")) amount = 2;
-    else if (lowerText.includes("anjo guardião") || lowerText.includes("anjo guardiao")) amount = 2;
-    else if (lowerText.includes("cabala")) amount = 2;
-    else if (lowerText.includes("daimon")) amount = 2;
+    else if (lowerText.includes("anjo guardião")) amount = 2;
     // Themes are usually cheaper consultations or part of general
     else if (lowerText.includes("amor")) amount = 2;
     else if (lowerText.includes("dinheiro")) amount = 2;
@@ -271,42 +270,75 @@ if (isTarotConsultation) amount = 3;
         }
       }
 
-      // Monta o cérebro oracular central.
-      // Ele preserva a mesma abertura de Tarot/Búzios/Odù durante follow-ups
-      // e só cria uma nova abertura quando a sessão exige um novo jogo.
+      // Add current message to contents
       const oracleEngine = buildPabloOracleEngine({
-        message: text,
-        user: {
-          displayName: user.displayName,
-          birthDate: user.birthDate,
-          birthTime: user.birthTime,
-          zodiacSign: user.sign,
-          lifePathNumber: user.lifePathNumber,
-          spiritualElement: user.spiritualElement,
-          guardianAngel: user.guardianAngel,
-          regentOdu: user.regentOdu,
-        },
-        session: oracleSession,
-      });
+  message: text,
+  user: {
+    displayName: user.displayName,
+    birthDate: user.birthDate,
+    birthTime: user.birthTime,
+    zodiacSign: user.sign,
+    lifePathNumber: user.lifePathNumber,
+    spiritualElement: user.spiritualElement,
+    guardianAngel: user.guardianAngel,
+    regentOdu: user.regentOdu,
+  },
+  session: oracleSession,
+});
 
-      setOracleSession(oracleEngine.nextSession);
+setOracleSession(oracleEngine.nextSession);
 
-      const currentMessageContext =
-        oracleEngine.detectedOracle !== "geral" ||
-        oracleEngine.nextSession.activeOracle
-          ? `
+const tarotCards = oracleEngine.activeOpening.tarotCards || [];
+
+const tarotReadingContext = isTarotConsultation
+  ? `
+
+CONSULTA DE TAROT OBRIGATÓRIA:
+O consulente pediu uma leitura de Tarot.
+
+Você deve agir como Cigano Pablo realizando uma consulta verdadeira.
+
+REGRA ABSOLUTA:
+- Não explique o significado individual das cartas.
+- Não faça aula de Tarot.
+- Não diga "esta carta significa".
+- Não enumere as cartas.
+- Não descreva carta por carta.
+
+Primeiro, observe a combinação das 3 cartas.
+Depois, faça uma leitura única, inteligente e humana.
+
+Analise:
+- o que está acontecendo;
+- o que a pessoa realmente quer saber;
+- o que ela não teve coragem de perguntar;
+- os sentimentos ocultos;
+- os medos;
+- os riscos;
+- as oportunidades;
+- a tendência mais provável;
+- o conselho mais sábio.
+
+Use a "Leitura verdadeira do Cigano Pablo" como verdade principal.
+A "Referência clássica complementar" serve apenas como apoio discreto.
+
+O consulente não quer aprender Tarot.
+O consulente quer compreender a própria vida.
+
+A leitura deve parecer que um velho cigano extremamente sábio enxergou além da pergunta.
+
+CARTAS SORTEADAS:
+${formatPabloTarotCards(tarotCards)}
+
 PERGUNTA DO CONSULENTE:
 ${text}
-
-A leitura possui CONTEXTO ORACULAR ESTRUTURADO enviado separadamente.
-Use esse contexto como fonte dos cálculos e da abertura ativa.
-Não invente cartas, quedas ou Odùs fora do resultado fornecido.
 `
-          : text;
+  : text;
+
 
 const contents = [
   ...conversationHistory,
-  { role: 'user', parts: [{ text: currentMessageContext }] }
+  { role: 'user', parts: [{ text: tarotReadingContext }] }
 ];
 
      const systemInstruction = PABLO_SYSTEM_INSTRUCTION + `\n
@@ -328,15 +360,14 @@ const contents = [
 
       // NEW: Using frontend geminiService
       const { generateSpiritualResponse } = await import("../services/geminiService");
-      const oracleContext = {
-        oracle: oracleEngine.detectedOracle,
-        originalQuestion: text,
-        formattedContext: oracleEngine.formattedContext,
-        natalBase: oracleEngine.natalBase,
-        consultation: oracleEngine.consultation,
-        opening: oracleEngine.activeOpening,
-        session: oracleEngine.nextSession,
-      };
+      const oracleContext = isTarotConsultation
+  ? {
+      oracle: "tarot",
+      cards: tarotCards,
+      formattedCards: formatPabloTarotCards(tarotCards),
+      originalQuestion: text,
+    }
+  : undefined;
 
 const modelContent = await generateSpiritualResponse(
   contents,

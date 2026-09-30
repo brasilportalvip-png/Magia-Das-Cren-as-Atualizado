@@ -478,29 +478,27 @@ export default async function handler(req: any, res: any) {
 
     let prompt = buildPabloPrompt(message, user);
 
-if (oracleContext?.formattedContext) {
+if (oracleContext?.oracle === "tarot") {
   prompt += `
 
 ==================================================
-CONTEXTO ORACULAR ESTRUTURADO — FONTE OBRIGATÓRIA
+CONTEXTO ESTRUTURADO DO ORÁCULO
 ==================================================
 
-${oracleContext.formattedContext}
+ORÁCULO UTILIZADO:
+Tarot
 
-==================================================
-REGRAS DE INTEGRIDADE DO ORÁCULO
-==================================================
+CARTAS SORTEADAS:
+${oracleContext.formattedCards || "Não informado"}
 
-1. O software já executou os cálculos e/ou a abertura acima.
-2. Você é o INTÉRPRETE do resultado; não substitua o resultado.
-3. Não invente cartas, quedas de Búzios, Odùs ou números diferentes dos fornecidos.
-4. Se existe uma abertura ativa, mantenha exatamente a mesma abertura nas perguntas de continuação.
-5. Só considere uma nova abertura quando o contexto recebido trouxer um novo resultado/ID.
-6. Nunca confunda Odù natal/regente com Odù de uma abertura de consulta.
-7. A base natal permanece válida durante toda a interpretação.
-8. Cruze BASE NATAL + MOMENTO REAL + INTENÇÃO/EMOÇÃO + ABERTURA ATIVA + PERGUNTA.
-9. Não despeje o relatório técnico no consulente. Transforme os dados em uma consulta natural de Cigano Pablo.
-10. Quando não houver abertura de jogo, use apenas os cálculos realmente presentes no contexto.
+PERGUNTA ORIGINAL:
+${oracleContext.originalQuestion || message}
+
+REGRA:
+Use obrigatoriamente as cartas acima como base principal da leitura.
+Não invente outras cartas.
+Não ignore a combinação sorteada.
+Interprete a combinação como uma leitura única e coerente para a pergunta do consulente.
 `;
 }
 
@@ -571,28 +569,15 @@ for (let index = 0; index < uniqueModels.length; index++) {
 
       lastError = error;
 
-      const status =
-        error?.status ??
-        error?.response?.status ??
-        error?.error?.code;
-
-      // 503 normalmente indica indisponibilidade/sobrecarga do modelo.
-      // Não desperdiça uma segunda tentativa no mesmo modelo:
-      // passa imediatamente ao próximo fallback configurado.
-      if (Number(status) === 503) {
-        console.warn(
-          `[GEMINI_FAST_FALLBACK] ${model} retornou 503. Pulando imediatamente para o próximo modelo.`
-        );
-        break;
-      }
-
       if (attempt < 2) {
+        const retryDelay = attempt * 2000;
+
         console.warn(
-          `[GEMINI_RETRY] ${model} falhou. Nova tentativa em 1 segundo.`
+          `[GEMINI_RETRY] ${model} falhou. Nova tentativa em ${retryDelay / 1000}s.`
         );
 
         await new Promise((resolve) =>
-          setTimeout(resolve, 1000)
+          setTimeout(resolve, retryDelay)
         );
 
         continue;
@@ -600,10 +585,14 @@ for (let index = 0; index < uniqueModels.length; index++) {
 
       if (index < uniqueModels.length - 1) {
         console.warn(
-          `[GEMINI_FALLBACK] ${model} falhou. Tentando o próximo modelo.`
+          `[GEMINI_FALLBACK] ${model} falhou nas duas tentativas. Próximo modelo em 2 segundos.`
+        );
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, 2000)
         );
       }
-}
+    }
   }
 }
 
