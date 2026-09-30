@@ -85,8 +85,20 @@ ${user?.displayName || user?.name || "Consulente"}
 E-mail:
 ${user?.email || "não informado"}
 
+Data de nascimento:
+${user?.birthDate || "não informada"}
+
+Hora de nascimento:
+${user?.birthTime || "não informada"}
+
 Signo:
 ${user?.sign || "não informado"}
+
+Número da Alma:
+${user?.nameNumber || "não calculado"}
+
+Número de Destino:
+${user?.lifePathNumber || "não calculado"}
 
 Elemento espiritual:
 ${user?.spiritualElement || "não informado"}
@@ -447,11 +459,134 @@ Agora responda ao consulente como Cigano Pablo.
 `;
 }
 
+let geminiClientCache: GoogleGenAI | null = null;
+
+function getGeminiClient(apiKey: string) {
+  if (!geminiClientCache) {
+    geminiClientCache = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          "User-Agent": "magia-das-crencas",
+        },
+      },
+    });
+  }
+
+  return geminiClientCache;
+}
+
+function getGeminiModels(): string[] {
+  const models = [
+    process.env.GEMINI_PRIMARY_MODEL?.trim(),
+    process.env.GEMINI_SECONDARY_MODEL?.trim(),
+    process.env.GEMINI_LITE_MODEL?.trim(),
+  ].filter((model): model is string => Boolean(model));
+
+  return [...new Set(models)];
+}
+
+const GEMINI_REQUEST_TIMEOUT_MS = 45_000;
+
+function getGeminiErrorStatus(error: any): number | null {
+  const status =
+    error?.status ??
+    error?.response?.status ??
+    error?.error?.code ??
+    error?.code;
+
+  const parsed = Number(status);
+
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isRetryableGeminiError(error: any): boolean {
+  const status = getGeminiErrorStatus(error);
+
+  if ([408, 429, 500, 502, 503, 504].includes(status ?? 0)) {
+    return true;
+  }
+
+  const message = String(error?.message || error || "").toLowerCase();
+
+  return (
+    message.includes("timeout") ||
+    message.includes("timed out") ||
+    message.includes("network") ||
+    message.includes("fetch failed") ||
+    message.includes("socket") ||
+    message.includes("connection") ||
+    message.includes("rate limit") ||
+    message.includes("resource exhausted") ||
+    message.includes("temporarily unavailable") ||
+    message.includes("service unavailable")
+  );
+}
+
+async function withGeminiTimeout<T>(
+  request: Promise<T>,
+  timeoutMs = GEMINI_REQUEST_TIMEOUT_MS
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(
+        new Error(
+          `Gemini excedeu o limite de ${Math.round(timeoutMs / 1000)} segundos.`
+        )
+      );
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([request, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
+
+function buildConversationHistory(history: any): string {
+  if (!Array.isArray(history) || history.length === 0) {
+    return "";
+  }
+
+  const normalized = history
+    .slice(-8)
+    .map((item: any) => {
+      const role =
+        item?.role === "model" || item?.role === "assistant"
+          ? "Cigano Pablo"
+          : "Consulente";
+
+      const text =
+        typeof item?.text === "string"
+          ? item.text
+          : typeof item?.content === "string"
+          ? item.content
+          : typeof item?.parts?.[0]?.text === "string"
+          ? item.parts[0].text
+          : "";
+
+      const clean = text.trim();
+
+      return clean ? `${role}: ${clean}` : "";
+    })
+    .filter(Boolean)
+    .join("\n\n");
+
+  // Evita crescimento ilimitado do prompt em conversas longas.
+  return normalized.slice(-12000);
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
     return res.status(405).json({
       success: false,
-      error: "Método não permitido."
+      error: "Método não permitido.",
     });
   }
 
@@ -461,25 +596,52 @@ export default async function handler(req: any, res: any) {
     if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
       return res.status(500).json({
         success: false,
-        error: "GEMINI_API_KEY não configurada."
+        error: "GEMINI_API_KEY não configurada.",
       });
     }
 
-    const { message, user, systemInstruction, oracleContext } = req.body || {};
+    const { message, user, oracleContext, history } = req.body || {};
 
     if (!message || typeof message !== "string") {
       return res.status(400).json({
         success: false,
-        error: "Mensagem inválida."
+        error: "Mensagem inválida.",
       });
     }
 
-    const ai = new GoogleGenAI({ apiKey });
+    const models = getGeminiModels();
+
+    if (models.length === 0) {
+      return res.status(500).json({
+        success: false,
+        error:
+          "Nenhum modelo Gemini foi configurado nas variáveis da Vercel.",
+      });
+    }
+
+    const ai = getGeminiClient(apiKey);
 
     let prompt = buildPabloPrompt(message, user);
 
-if (oracleContext?.formattedContext) {
-  prompt += `
+    const conversationHistory = buildConversationHistory(history);
+
+    if (conversationHistory) {
+      prompt += `
+
+==================================================
+HISTÓRICO RECENTE DA CONSULTA
+==================================================
+
+${conversationHistory}
+
+Use este histórico apenas para manter continuidade, contexto e coerência.
+Não repita respostas anteriores sem necessidade.
+A pergunta atual continua sendo a prioridade.
+`;
+    }
+
+    if (oracleContext?.formattedContext) {
+      prompt += `
 
 ==================================================
 CONTEXTO ORACULAR ESTRUTURADO — FONTE OBRIGATÓRIA
@@ -502,129 +664,123 @@ REGRAS DE INTEGRIDADE DO ORÁCULO
 9. Não despeje o relatório técnico no consulente. Transforme os dados em uma consulta natural de Cigano Pablo.
 10. Quando não houver abertura de jogo, use apenas os cálculos realmente presentes no contexto.
 `;
-}
-
-    const models = [
-  process.env.GEMINI_PRIMARY_MODEL?.trim(),
-  process.env.GEMINI_SECONDARY_MODEL?.trim(),
-  process.env.GEMINI_LITE_MODEL?.trim(),
-].filter(Boolean) as string[];
-
-    const uniqueModels = [...new Set(models)];
+    }
 
     let lastError: any = null;
+    const errors: Array<{
+      model: string;
+      status: number | null;
+      retryable: boolean;
+      message: string;
+      durationMs: number;
+    }> = [];
 
-   
-
-
-
-for (let index = 0; index < uniqueModels.length; index++) {
-  const model = uniqueModels[index];
-
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    console.log(
-      `[GEMINI_TRY] Tentando modelo: ${model} | tentativa ${attempt}/2`
-    );
-
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-          systemInstruction:
-            systemInstruction ||
-            "Você é Cigano Pablo, guia espiritual do Magia das Crenças.",
-          maxOutputTokens: 3000
-        }
-      });
-
-      const text = response.text?.trim();
-
-      if (!text) {
-        throw new Error(`Resposta vazia do modelo ${model}.`);
-      }
+    for (let index = 0; index < models.length; index++) {
+      const model = models[index];
+      const startedAt = Date.now();
 
       console.log(
-        `[GEMINI_SUCCESS] Modelo respondeu: ${model} | tentativa ${attempt}/2`
+        `[GEMINI_TRY] Tentando modelo: ${model} | tentativa única`
       );
 
-      return res.status(200).json({
-        success: true,
-        text,
-        model
-      });
-    } catch (error: any) {
-      console.error(
-  `[GEMINI_MODEL_ERROR] ${model} | tentativa ${attempt}/2`,
-  JSON.stringify(
-    {
-      message: error?.message,
-      status: error?.status,
-      code: error?.code,
-      name: error?.name,
-      error: error?.error,
-    },
-    null,
-    2
-  )
-);
+      try {
+        // O prompt completo e o contexto oracular já estão em `prompt`.
+        // Não reutilize aqui um systemInstruction extenso vindo do frontend,
+        // pois isso duplica regras, aumenta tokens e pode elevar a latência.
+        const response = await withGeminiTimeout(
+          ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+              systemInstruction:
+                "Você é Cigano Pablo, guia espiritual e oraculista principal do Magia das Crenças. Siga integralmente as instruções e o contexto presentes em contents.",
+              maxOutputTokens: 3000,
+            },
+          })
+        );
 
-      lastError = error;
+        const text = response.text?.trim();
 
-      const status =
-        error?.status ??
-        error?.response?.status ??
-        error?.error?.code;
+        if (!text) {
+          throw new Error(`Resposta vazia do modelo ${model}.`);
+        }
 
-      // 503 normalmente indica indisponibilidade/sobrecarga do modelo.
-      // Não desperdiça uma segunda tentativa no mesmo modelo:
-      // passa imediatamente ao próximo fallback configurado.
-      if (Number(status) === 503) {
+        const durationMs = Date.now() - startedAt;
+
+        console.log(
+          `[GEMINI_SUCCESS] Modelo respondeu: ${model} | ${durationMs}ms`
+        );
+
+        return res.status(200).json({
+          success: true,
+          text,
+          model,
+          durationMs,
+        });
+      } catch (error: any) {
+        lastError = error;
+
+        const durationMs = Date.now() - startedAt;
+        const status = getGeminiErrorStatus(error);
+        const retryable = isRetryableGeminiError(error);
+        const message = String(
+          error?.message || `Falha desconhecida no modelo ${model}.`
+        );
+
+        errors.push({
+          model,
+          status,
+          retryable,
+          message,
+          durationMs,
+        });
+
+        console.error(
+          `[GEMINI_MODEL_ERROR] ${model}`,
+          JSON.stringify(
+            {
+              message,
+              status,
+              retryable,
+              durationMs,
+              name: error?.name,
+            },
+            null,
+            2
+          )
+        );
+
+        const hasNextModel = index < models.length - 1;
+
+        if (!hasNextModel) {
+          break;
+        }
+
         console.warn(
-          `[GEMINI_FAST_FALLBACK] ${model} retornou 503. Pulando imediatamente para o próximo modelo.`
-        );
-        break;
-      }
-
-      if (attempt < 2) {
-        console.warn(
-          `[GEMINI_RETRY] ${model} falhou. Nova tentativa em 1 segundo.`
-        );
-
-        await new Promise((resolve) =>
-          setTimeout(resolve, 1000)
-        );
-
-        continue;
-      }
-
-      if (index < uniqueModels.length - 1) {
-        console.warn(
-          `[GEMINI_FALLBACK] ${model} falhou. Tentando o próximo modelo.`
+          `[GEMINI_FAST_FALLBACK] ${model} falhou${
+            status ? ` com status ${status}` : ""
+          }. Mudando imediatamente para ${models[index + 1]}.`
         );
       }
-}
-  }
-}
+    }
 
-
-
-
-
-
+    console.error(
+      "[GEMINI_ALL_MODELS_FAILED]",
+      JSON.stringify(errors, null, 2)
+    );
 
     return res.status(502).json({
       success: false,
       error:
         lastError?.message ||
-        "Os modelos da Gemini estão temporariamente indisponíveis."
+        "Os modelos da Gemini estão temporariamente indisponíveis.",
     });
   } catch (error: any) {
     console.error("[GEMINI_CHAT_ERROR]", error);
 
     return res.status(500).json({
       success: false,
-      error: error?.message || "Erro ao consultar Cigano Pablo."
+      error: error?.message || "Erro ao consultar Cigano Pablo.",
     });
   }
 }

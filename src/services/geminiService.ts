@@ -1,29 +1,42 @@
-import { PABLO_SYSTEM_INSTRUCTION } from "../lib/gemini";
-
 export async function generateSpiritualResponse(
   messages: any[],
-  systemInstruction: string,
   user?: any,
   cost?: number,
   oracleContext?: any
 ) {
   try {
+    const safeMessages = Array.isArray(messages) ? messages : [];
+
     const lastMessage =
-      Array.isArray(messages) && messages.length > 0
-        ? messages[messages.length - 1]
+      safeMessages.length > 0
+        ? safeMessages[safeMessages.length - 1]
         : "";
 
-    const messageText =
-      typeof lastMessage === "string"
-        ? lastMessage
-        : lastMessage?.text ||
-          lastMessage?.content ||
-          lastMessage?.parts?.[0]?.text ||
-          "";
+    const extractText = (message: any): string => {
+      if (typeof message === "string") return message;
 
-    if (!messageText || typeof messageText !== "string") {
+      return (
+        message?.text ||
+        message?.content ||
+        message?.parts?.[0]?.text ||
+        ""
+      );
+    };
+
+    const messageText = extractText(lastMessage).trim();
+
+    if (!messageText) {
       throw new Error("Mensagem inválida.");
     }
+
+    const history = safeMessages
+      .slice(0, -1)
+      .slice(-8)
+      .map((item: any) => ({
+        role: item?.role === "model" ? "model" : "user",
+        text: extractText(item).trim(),
+      }))
+      .filter((item: any) => item.text);
 
     const response = await fetch("/api/gemini/chat", {
       method: "POST",
@@ -31,12 +44,12 @@ export async function generateSpiritualResponse(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-  message: messageText,
-  systemInstruction: systemInstruction || PABLO_SYSTEM_INSTRUCTION,
-  user,
-  cost,
-  oracleContext,
-}),
+        message: messageText,
+        history,
+        user,
+        cost,
+        oracleContext,
+      }),
     });
 
     const data = await response.json();
@@ -54,7 +67,7 @@ export async function generateSpiritualResponse(
     console.error("Gemini Backend Error:", error);
 
     throw new Error(
-      error.message || "Erro na conexão com o oráculo espiritual."
+      error?.message || "Erro na conexão com o oráculo espiritual."
     );
   }
 }
