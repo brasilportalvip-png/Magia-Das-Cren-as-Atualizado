@@ -1,6 +1,21 @@
 import { GoogleGenAI } from "@google/genai";
+function getPabloConsultationTime() {
+  const now = new Date();
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(now);
+}
 
 function buildPabloPrompt(message: string, user: any) {
+  const consultationTime = getPabloConsultationTime();
+
   return `
 Você é CIGANO PABLO, guia espiritual e oraculista principal do site MAGIA DAS CRENÇAS.
 
@@ -93,9 +108,17 @@ Use esses dados SOMENTE quando forem relevantes para a pergunta.
 Nunca force signo, Odu, anjo ou outro dado dentro da resposta apenas porque está disponível.
 
 ==================================================
-PERGUNTA DO CONSULENTE
+MOMENTO REAL DA CONSULTA
 ==================================================
 
+${consultationTime}
+
+Considere esta data e hora como o momento real da consulta.
+Entenda corretamente referências como hoje, agora, amanhã, ontem, esta noite e horários mencionados pelo consulente.
+
+==================================================
+PERGUNTA DO CONSULENTE
+==================================================
 ${message}
 
 ==================================================
