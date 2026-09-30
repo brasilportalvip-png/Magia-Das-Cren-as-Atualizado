@@ -101,6 +101,7 @@ export interface PabloOracleSessionState {
   tarotCards?: ReturnType<typeof drawPabloTarotCards> | null;
   buziosReading?: PabloBuziosReading | null;
   oduReading?: PabloOduConsultation | null;
+  otherPerson?: PabloOtherPerson | null;
   openedAt?: string | null;
 }
 
@@ -132,6 +133,15 @@ function resolveFullName(user: PabloOracleUser): string {
 
 function detectOracle(message: string): PabloOracleName {
   const t = normalize(message);
+
+  if (
+    t.includes("comparacao amorosa") ||
+    t.includes("compatibilidade amorosa") ||
+    t.includes("combina comigo") ||
+    t.includes("somos compativeis")
+  ) {
+    return "comparacao_amorosa";
+  }
 
   if (t.includes("tarot") || t.includes("carta")) return "tarot";
 
@@ -326,18 +336,21 @@ export function buildPabloOracleEngine(input: PabloOracleEngineInput) {
     oduReading = drawPabloOduConsultation();
   }
 
-  const loveComparison =
-    input.otherPerson?.name &&
-    input.otherPerson?.birthDate
-      ? buildPabloLoveComparison({
-          seekerName: fullName,
-          seekerBirthDate: user.birthDate || "",
-          otherName: input.otherPerson.name,
-          otherBirthDate: input.otherPerson.birthDate,
-          question: message,
-          consultationDate: now,
-        })
-      : null;
+ const activeOtherPerson =
+  input.otherPerson || input.session?.otherPerson || null;
+
+const loveComparison =
+  activeOtherPerson?.name &&
+  activeOtherPerson?.birthDate
+    ? buildPabloLoveComparison({
+        seekerName: fullName,
+        seekerBirthDate: user.birthDate || "",
+        otherName: activeOtherPerson.name,
+        otherBirthDate: activeOtherPerson.birthDate,
+        question: message,
+        consultationDate: now,
+      })
+    : null;
 
   const baseSections = [
     formatPabloIntentEmotion(intentEmotion),
@@ -405,21 +418,24 @@ export function buildPabloOracleEngine(input: PabloOracleEngineInput) {
       oduReading,
     },
 
-    nextSession: {
-      activeOracle:
-        detectedOracle === "geral"
-          ? input.session?.activeOracle || null
-          : detectedOracle,
-      tarotCards,
-      buziosReading,
-      oduReading,
-      openedAt:
-        newOpening ||
-        (!input.session?.openedAt &&
-          detectedOracle !== "geral")
-          ? now.toISOString()
-          : input.session?.openedAt || null,
-    } satisfies PabloOracleSessionState,
+   nextSession: {
+  activeOracle:
+  loveComparison
+    ? "comparacao_amorosa"
+    : detectedOracle === "geral"
+      ? input.session?.activeOracle || null
+      : detectedOracle,
+  tarotCards,
+  buziosReading,
+  oduReading,
+  otherPerson: activeOtherPerson,
+  openedAt:
+    newOpening ||
+    (!input.session?.openedAt &&
+      detectedOracle !== "geral")
+      ? now.toISOString()
+      : input.session?.openedAt || null,
+} satisfies PabloOracleSessionState,
 
     formattedContext: [
       "CÉREBRO ORACULAR DO CIGANO PABLO",

@@ -486,7 +486,7 @@ function getGeminiModels(): string[] {
   return [...new Set(models)];
 }
 
-const GEMINI_REQUEST_TIMEOUT_MS = 45_000;
+const GEMINI_REQUEST_TIMEOUT_MS = 15_000;
 
 function getGeminiErrorStatus(error: any): number | null {
   const status =
