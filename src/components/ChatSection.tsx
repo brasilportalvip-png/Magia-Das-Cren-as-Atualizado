@@ -6,6 +6,7 @@ import { Message, SpiritualUser } from "../types/spiritual";
 import {
   buildPabloOracleEngine,
   type PabloOracleSessionState,
+  type PabloOtherPerson,
 } from "../lib/oraculosPablo";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
@@ -28,6 +29,139 @@ const QUICK_SUGGESTIONS = [
   { label: "Espiritual", icon: <Sparkles size={16} fill="currentColor" />, color: "text-purple-400", glow: "shadow-[0_0_20px_rgba(168,85,247,0.6)]", gradient: "from-purple-500 to-purple-700", border: "border-purple-400/60" },
   { label: "Família", icon: <Home size={16} fill="currentColor" />, color: "text-orange-400", glow: "shadow-[0_0_20px_rgba(249,115,22,0.6)]", gradient: "from-orange-500 to-orange-700", border: "border-orange-400/60" },
 ];
+
+
+function normalizeChatText(text: string): string {
+  return String(text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function hasStrongLoveContext(text: string): boolean {
+  const t = normalizeChatText(text);
+
+  return [
+    "amor",
+    "relacionamento",
+    "namoro",
+    "namorado",
+    "namorada",
+    "marido",
+    "esposa",
+    "ficante",
+    "casamento",
+    "reconciliacao",
+    "paixao",
+    "me ama",
+    "gosta de mim",
+    "sente algo por mim",
+    "sentimento por mim",
+    "voltar comigo",
+    "quer voltar comigo",
+    "traicao amorosa",
+    "meu ex",
+    "minha ex",
+    "ex namorado",
+    "ex namorada",
+    "compatibilidade amorosa",
+    "comparacao amorosa",
+  ].some((term) => t.includes(term));
+}
+
+function isSpecificLoveQuestion(text: string): boolean {
+  const t = normalizeChatText(text);
+
+  return [
+    "meu ex",
+    "minha ex",
+    "namorado",
+    "namorada",
+    "marido",
+    "esposa",
+    "ficante",
+    "amante",
+    "me ama",
+    "gosta de mim",
+    "sente algo por mim",
+    "sentimento por mim",
+    "pensa em mim",
+    "voltar comigo",
+    "quer voltar comigo",
+    "vai voltar",
+    "reconciliacao",
+    "traicao amorosa",
+    "compatibilidade amorosa",
+    "comparacao amorosa",
+  ].some((term) => t.includes(term));
+}
+
+function cleanPossibleName(value: string): string {
+  const removable = new Set([
+    "quero", "saber", "se", "sobre", "de", "do", "da",
+    "com", "nome", "pessoa", "ele", "ela", "e",
+  ]);
+
+  const parts = value
+    .trim()
+    .replace(/[,:;!?]+$/g, "")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  while (parts.length > 1 && removable.has(normalizeChatText(parts[0]))) {
+    parts.shift();
+  }
+
+  return parts.join(" ").trim();
+}
+
+function extractOtherPerson(
+  text: string,
+  allowStandaloneNameWithDate: boolean
+): PabloOtherPerson | null {
+  const birthDateMatch = text.match(
+    /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\b/
+  );
+
+  if (!birthDateMatch) return null;
+
+  const birthDate = birthDateMatch[1];
+
+  const explicitPattern = text.match(
+    /\b(?:com|nome(?:\s+é)?|pessoa(?:\s+é)?|meu namorado|minha namorada|meu marido|minha esposa|meu ex|minha ex)\s+([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){0,4})\s+\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/i
+  );
+
+  if (explicitPattern?.[1]) {
+    const name = cleanPossibleName(explicitPattern[1]);
+    return name ? { name, birthDate } : null;
+  }
+
+  const bornPattern = text.match(
+    /\b([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){0,4})\s+(?:nasceu\s+em|nascid[oa]\s+em)\s+\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/i
+  );
+
+  if (bornPattern?.[1]) {
+    const name = cleanPossibleName(bornPattern[1]);
+    return name ? { name, birthDate } : null;
+  }
+
+  if (!allowStandaloneNameWithDate) return null;
+
+  const beforeDate = text
+    .slice(0, birthDateMatch.index ?? 0)
+    .trim()
+    .replace(/[,:;!?]+$/g, "");
+
+  const standaloneMatch = beforeDate.match(
+    /([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){0,5})$/
+  );
+
+  if (!standaloneMatch?.[1]) return null;
+
+  const name = cleanPossibleName(standaloneMatch[1]);
+  return name ? { name, birthDate } : null;
+}
 
 export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMessage }: ChatSectionProps) {
   const [messages, setMessages] = useState<Message[]>([
@@ -127,51 +261,37 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
     const lowerText = text.toLowerCase();
     const isTarotConsultation = lowerText.includes("tarot");
 
-   const isLoveQuestion =
-  lowerText.includes("amor") ||
-  lowerText.includes("relacionamento") ||
-  lowerText.includes("ex") ||
-  lowerText.includes("ela") ||
-  lowerText.includes("ele") ||
-  lowerText.includes("gosta de mim") ||
-  lowerText.includes("me ama") ||
-  lowerText.includes("trai") ||
-  lowerText.includes("saudade") ||
-  lowerText.includes("paixão") ||
-  lowerText.includes("paixao") ||
-  lowerText.includes("volta") ||
-  lowerText.includes("ficante") ||
-  lowerText.includes("casamento") ||
-  lowerText.includes("namoro") ||
-  oracleSession?.activeOracle === "comparacao_amorosa";
+    const loveContext =
+      hasStrongLoveContext(text) ||
+      oracleSession?.activeOracle === "comparacao_amorosa" ||
+      oracleSession?.awaitingLovePerson === true;
 
-    const hasBirthDate =
-      /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/.test(text) ||
-      /\bnascid[ao]\b/i.test(text);
+    const otherPerson = loveContext
+      ? extractOtherPerson(
+          text,
+          oracleSession?.awaitingLovePerson === true ||
+            hasStrongLoveContext(text)
+        )
+      : null;
 
-    const hasOtherPersonName =
-      /\bcom\s+[a-záàâãéêíóôõúç]+/i.test(text) ||
-      /\bde\s+[a-záàâãéêíóôõúç]+/i.test(text) ||
-      /\bnome\s+[a-záàâãéêíóôõúç]+/i.test(text);
+    const hasStoredLovePerson = Boolean(
+      oracleSession?.otherPerson?.name &&
+      oracleSession?.otherPerson?.birthDate
+    );
 
-    
+    const specificLoveQuestion =
+      hasStrongLoveContext(text) &&
+      (
+        isSpecificLoveQuestion(text) ||
+        Boolean(otherPerson)
+      );
 
-const isSpecificLoveQuestion =
-  /\b(ex|meu ex|minha ex|ele|ela|namorado|namorada|marido|esposa|ficante|amante|rival|trai|traição|traicao|volta|voltar|retorno|reconciliação|reconciliacao|saudade|sente algo|sentimento|gosta de mim|me ama|pensa em mim|vai me procurar|me procura|outra pessoa|alguém|alguem)\b/i.test(text) ||
-  hasOtherPersonName;
-
-const hasNameWithBirthDate =
-  /\b[A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){1,5}\s+\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/.test(text);
-
-if (
-  isLoveQuestion &&
-  isSpecificLoveQuestion &&
-  ((!hasOtherPersonName && !hasNameWithBirthDate) || !hasBirthDate)
-) {
-
-
-
- setMessages(prev => [
+    if (
+      specificLoveQuestion &&
+      !otherPerson &&
+      !hasStoredLovePerson
+    ) {
+      setMessages(prev => [
         ...prev,
         {
           role: "user",
@@ -185,6 +305,11 @@ if (
           timestamp: Date.now()
         }
       ]);
+
+      setOracleSession(prev => ({
+        ...(prev || {}),
+        awaitingLovePerson: true,
+      }));
 
       setInput("");
       return;
@@ -244,51 +369,21 @@ if (
       }
 
 
-const birthDateMatch = text.match(
-  /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\b/
-);
-
-const textWithoutBirthDate = birthDateMatch
-  ? text.replace(birthDateMatch[0], "").trim()
-  : text.trim();
-
-const otherNameMatch =
-  text.match(/\bcom\s+([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){0,4})/i) ||
-  text.match(/\bnome\s+([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){0,4})/i);
-
-const fallbackOtherName =
-  birthDateMatch &&
-  /^[A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){1,5}$/.test(textWithoutBirthDate)
-    ? textWithoutBirthDate
-    : null;
-
-const otherPerson =
-  birthDateMatch && (otherNameMatch || fallbackOtherName)
-    ? {
-        name: otherNameMatch
-          ? otherNameMatch[1].trim()
-          : fallbackOtherName!,
-        birthDate: birthDateMatch[1],
-      }
-    : null;
-
-
-
       const oracleEngine = buildPabloOracleEngine({
-  message: text,
-  user: {
-    displayName: user.displayName,
-    birthDate: user.birthDate,
-    birthTime: user.birthTime,
-    zodiacSign: user.sign,
-    lifePathNumber: user.lifePathNumber,
-    spiritualElement: user.spiritualElement,
-    guardianAngel: user.guardianAngel,
-    regentOdu: user.regentOdu,
-  },
-  otherPerson,
-  session: oracleSession,
-});
+        message: text,
+        user: {
+          displayName: user.displayName,
+          birthDate: user.birthDate,
+          birthTime: user.birthTime,
+          zodiacSign: user.sign,
+          lifePathNumber: user.lifePathNumber,
+          spiritualElement: user.spiritualElement,
+          guardianAngel: user.guardianAngel,
+          regentOdu: user.regentOdu,
+        },
+        otherPerson,
+        session: oracleSession,
+      });
 
       setOracleSession(oracleEngine.nextSession);
 

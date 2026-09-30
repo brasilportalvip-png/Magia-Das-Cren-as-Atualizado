@@ -69,6 +69,17 @@ export type PabloOracleName =
   | "comparacao_amorosa"
   | "geral";
 
+export type PabloConsultationTheme =
+  | "trabalho"
+  | "dinheiro"
+  | "familia"
+  | "saude"
+  | "justica"
+  | "estudos"
+  | "espiritualidade"
+  | "amor"
+  | "geral";
+
 export interface PabloOracleUser {
   displayName?: string;
   birthName?: string;
@@ -102,6 +113,7 @@ export interface PabloOracleSessionState {
   buziosReading?: PabloBuziosReading | null;
   oduReading?: PabloOduConsultation | null;
   otherPerson?: PabloOtherPerson | null;
+  awaitingLovePerson?: boolean;
   openedAt?: string | null;
 }
 
@@ -133,15 +145,6 @@ function resolveFullName(user: PabloOracleUser): string {
 
 function detectOracle(message: string): PabloOracleName {
   const t = normalize(message);
-
-  if (
-    t.includes("comparacao amorosa") ||
-    t.includes("compatibilidade amorosa") ||
-    t.includes("combina comigo") ||
-    t.includes("somos compativeis")
-  ) {
-    return "comparacao_amorosa";
-  }
 
   if (t.includes("tarot") || t.includes("carta")) return "tarot";
 
@@ -199,11 +202,136 @@ function detectOracle(message: string): PabloOracleName {
     return "anjo_guardiao";
   }
 
+ if (
+  t.includes("daimon") ||
+  t.includes("daimons")
+) {
+  return "daimons";
+}
+
+return "geral";
+}
+
+function detectConsultationTheme(message: string): PabloConsultationTheme {
+  const t = normalize(message);
+
   if (
-    t.includes("daimon") ||
-    t.includes("daimons")
+    t.includes("trabalho") ||
+    t.includes("emprego") ||
+    t.includes("carreira") ||
+    t.includes("profissao") ||
+    t.includes("profissional") ||
+    t.includes("empresa") ||
+    t.includes("negocio") ||
+    t.includes("socio") ||
+    t.includes("sociedade") ||
+    t.includes("cliente") ||
+    t.includes("chefe")
   ) {
-    return "daimons";
+    return "trabalho";
+  }
+
+  if (
+    t.includes("dinheiro") ||
+    t.includes("financeiro") ||
+    t.includes("financas") ||
+    t.includes("divida") ||
+    t.includes("emprestimo") ||
+    t.includes("pagamento") ||
+    t.includes("salario") ||
+    t.includes("investimento") ||
+    t.includes("lucro") ||
+    t.includes("renda")
+  ) {
+    return "dinheiro";
+  }
+
+  if (
+    t.includes("familia") ||
+    t.includes("filho") ||
+    t.includes("filha") ||
+    t.includes("mae") ||
+    t.includes("pai") ||
+    t.includes("irmao") ||
+    t.includes("irma") ||
+    t.includes("avo") ||
+    t.includes("casa")
+  ) {
+    return "familia";
+  }
+
+  if (
+    t.includes("saude") ||
+    t.includes("doenca") ||
+    t.includes("dor") ||
+    t.includes("tratamento") ||
+    t.includes("medico") ||
+    t.includes("hospital") ||
+    t.includes("exame")
+  ) {
+    return "saude";
+  }
+
+  if (
+    t.includes("justica") ||
+    t.includes("processo") ||
+    t.includes("advogado") ||
+    t.includes("tribunal") ||
+    t.includes("juridico") ||
+    t.includes("audiencia")
+  ) {
+    return "justica";
+  }
+
+  if (
+    t.includes("estudo") ||
+    t.includes("escola") ||
+    t.includes("faculdade") ||
+    t.includes("curso") ||
+    t.includes("prova") ||
+    t.includes("concurso")
+  ) {
+    return "estudos";
+  }
+
+  if (
+    t.includes("espiritual") ||
+    t.includes("protecao") ||
+    t.includes("energia") ||
+    t.includes("guia") ||
+    t.includes("mediunidade") ||
+    t.includes("limpeza espiritual")
+  ) {
+    return "espiritualidade";
+  }
+
+  if (
+    t.includes("amor") ||
+    t.includes("relacionamento") ||
+    t.includes("namoro") ||
+    t.includes("namorado") ||
+    t.includes("namorada") ||
+    t.includes("marido") ||
+    t.includes("esposa") ||
+    t.includes("ficante") ||
+    t.includes("casamento") ||
+    t.includes("reconciliacao") ||
+    t.includes("paixao") ||
+    t.includes("me ama") ||
+    t.includes("gosta de mim") ||
+    t.includes("sente algo por mim") ||
+    t.includes("sentimento por mim") ||
+    t.includes("voltar comigo") ||
+    t.includes("quer voltar comigo") ||
+    t.includes("traicao amorosa") ||
+    t.includes("meu ex") ||
+    t.includes("minha ex") ||
+    t.includes("ex namorado") ||
+    t.includes("ex namorada") ||
+    t.includes("compatibilidade amorosa") ||
+    t.includes("comparacao amorosa")
+  ) {
+    return "amor";
   }
 
   return "geral";
@@ -233,15 +361,32 @@ export function buildPabloOracleEngine(input: PabloOracleEngineInput) {
   const fullName = resolveFullName(user);
 
   const intentEmotion = buildPabloIntentEmotion({
-    question: message,
-    consultationDate: now,
-  });
+  question: message,
+  consultationDate: now,
+});
 
-  let detectedOracle = detectOracle(message);
+const detectedTheme = detectConsultationTheme(message);
+
+  const consultationTheme: PabloConsultationTheme =
+    detectedTheme === "geral" &&
+    (
+      input.session?.activeOracle === "comparacao_amorosa" ||
+      input.session?.awaitingLovePerson === true
+    )
+      ? "amor"
+      : detectedTheme;
+
+  const explicitOracle = detectOracle(message);
+
+  let detectedOracle = explicitOracle;
 
   if (
-    detectedOracle === "geral" &&
-    input.session?.activeOracle
+    explicitOracle === "geral" &&
+    input.session?.activeOracle &&
+    !(
+      input.session.activeOracle === "comparacao_amorosa" &&
+      consultationTheme !== "amor"
+    )
   ) {
     detectedOracle = input.session.activeOracle;
   }
@@ -335,22 +480,24 @@ export function buildPabloOracleEngine(input: PabloOracleEngineInput) {
   ) {
     oduReading = drawPabloOduConsultation();
   }
-
- const activeOtherPerson =
-  input.otherPerson || input.session?.otherPerson || null;
+  const activeOtherPerson =
+    consultationTheme === "amor"
+      ? input.otherPerson || input.session?.otherPerson || null
+      : null;
 
 const loveComparison =
-  activeOtherPerson?.name &&
-  activeOtherPerson?.birthDate
-    ? buildPabloLoveComparison({
-        seekerName: fullName,
-        seekerBirthDate: user.birthDate || "",
-        otherName: activeOtherPerson.name,
-        otherBirthDate: activeOtherPerson.birthDate,
-        question: message,
-        consultationDate: now,
-      })
-    : null;
+    consultationTheme === "amor" &&
+    activeOtherPerson?.name &&
+    activeOtherPerson?.birthDate
+      ? buildPabloLoveComparison({
+          seekerName: fullName,
+          seekerBirthDate: user.birthDate || "",
+          otherName: activeOtherPerson.name,
+          otherBirthDate: activeOtherPerson.birthDate,
+          question: message,
+          consultationDate: now,
+        })
+      : null;
 
   const baseSections = [
     formatPabloIntentEmotion(intentEmotion),
@@ -407,10 +554,11 @@ const loveComparison =
     },
 
     consultation: {
-      message,
-      intentEmotion,
-      loveComparison,
-    },
+  message,
+  theme: consultationTheme,
+  intentEmotion,
+  loveComparison,
+},
 
     activeOpening: {
       tarotCards,
@@ -418,29 +566,45 @@ const loveComparison =
       oduReading,
     },
 
-   nextSession: {
-  activeOracle:
-  loveComparison
-    ? "comparacao_amorosa"
-    : detectedOracle === "geral"
-      ? input.session?.activeOracle || null
-      : detectedOracle,
-  tarotCards,
-  buziosReading,
-  oduReading,
-  otherPerson: activeOtherPerson,
-  openedAt:
-    newOpening ||
-    (!input.session?.openedAt &&
-      detectedOracle !== "geral")
-      ? now.toISOString()
-      : input.session?.openedAt || null,
-} satisfies PabloOracleSessionState,
+   nextSession: (() => {
+      const nextActiveOracle: PabloOracleName | null =
+        loveComparison
+          ? "comparacao_amorosa"
+          : explicitOracle !== "geral"
+            ? explicitOracle
+            : consultationTheme !== "amor" &&
+              input.session?.activeOracle === "comparacao_amorosa"
+              ? null
+              : input.session?.activeOracle || null;
+
+      return {
+        activeOracle: nextActiveOracle,
+        tarotCards,
+        buziosReading,
+        oduReading,
+        otherPerson:
+          consultationTheme === "amor"
+            ? activeOtherPerson
+            : null,
+        awaitingLovePerson:
+          consultationTheme === "amor" &&
+          !activeOtherPerson &&
+          input.session?.awaitingLovePerson === true,
+        openedAt:
+          newOpening ||
+          (!input.session?.openedAt &&
+            detectedOracle !== "geral")
+            ? now.toISOString()
+            : input.session?.openedAt || null,
+      } satisfies PabloOracleSessionState;
+    })(),
 
     formattedContext: [
       "CÉREBRO ORACULAR DO CIGANO PABLO",
       "",
       "BASE FIXA + MOMENTO + INTENÇÃO + ABERTURA REAL",
+      "",
+      `TEMA IDENTIFICADO: ${consultationTheme}`,
       "",
       ...baseSections,
       ...oracleSections,
