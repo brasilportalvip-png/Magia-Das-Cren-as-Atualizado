@@ -35,8 +35,8 @@ function getGeminiModels(): string[] {
   return [...new Set(models)];
 }
 
-const TOTAL_BUDGET_MS = 50_000;
-const INDIVIDUAL_TIMEOUT_MS = 30_000;
+const TOTAL_BUDGET_MS = 60_000;
+const INDIVIDUAL_TIMEOUT_MS = 12_000;
 
 function isRetryable(error: any): boolean {
   const status = Number(error?.status ?? error?.response?.status ?? error?.code ?? 0);
@@ -65,7 +65,7 @@ export async function generateResilientResponse(prompt: string): Promise<{
 
   for (let mIdx = 0; mIdx < models.length; mIdx++) {
     const model = models[mIdx];
-    const maxAttempts = 2;
+    const maxAttempts = 1;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const elapsed = Date.now() - startTime;
