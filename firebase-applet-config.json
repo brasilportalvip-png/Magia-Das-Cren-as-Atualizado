@@ -3,7 +3,7 @@
   "appId": "1:544757898188:web:38e80cbbadcec1460f9b69",
   "apiKey": "AIzaSyCdawPH99resDcxlPPDuTtDqy0VNheZdqw",
   "authDomain": "gen-lang-client-0138178639.firebaseapp.com",
-  "firestoreDatabaseId": "(default)",
+  "firestoreDatabaseId": "cigano",
   "storageBucket": "gen-lang-client-0138178639.firebasestorage.app",
   "messagingSenderId": "544757898188",
   "measurementId": ""
