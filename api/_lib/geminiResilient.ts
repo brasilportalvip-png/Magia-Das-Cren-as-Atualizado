@@ -4,6 +4,7 @@ let geminiClientCache: GoogleGenAI | null = null;
 
 function getGeminiClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+
   if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
     throw new Error("GEMINI_API_KEY não configurada.");
   }
@@ -18,6 +19,7 @@ function getGeminiClient(): GoogleGenAI {
       },
     });
   }
+
   return geminiClientCache;
 }
 
@@ -29,20 +31,57 @@ function getGeminiModels(): string[] {
   ].filter((model): model is string => Boolean(model));
 
   if (models.length === 0) {
-    return ["gemini-2.5-flash", "gemini-2.5-pro"];
+    throw new Error(
+      "Nenhum modelo Gemini configurado. Configure GEMINI_PRIMARY_MODEL, GEMINI_SECONDARY_MODEL e GEMINI_LITE_MODEL."
+    );
   }
 
   return [...new Set(models)];
 }
 
 const TOTAL_BUDGET_MS = 60_000;
-const INDIVIDUAL_TIMEOUT_MS = 12_000;
+
+// Primeira passagem: dá mais tempo para cada modelo responder.
+const FIRST_ROUND_TIMEOUT_MS = 12_000;
+
+// Segunda passagem: recuperação rápida apenas dos modelos
+// que falharam por erro temporário.
+const SECOND_ROUND_TIMEOUT_MS = 6_000;
+
+// Reserva alguns segundos para a função finalizar com segurança.
+const SAFETY_MARGIN_MS = 3_000;
+
+function getErrorStatus(error: any): number {
+  return Number(
+    error?.status ??
+      error?.response?.status ??
+      error?.code ??
+      error?.error?.code ??
+      0
+  );
+}
+
+function getErrorMessage(error: any): string {
+  if (typeof error?.message === "string") {
+    return error.message;
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
 
 function isRetryable(error: any): boolean {
-  const status = Number(error?.status ?? error?.response?.status ?? error?.code ?? 0);
-  if ([408, 429, 500, 502, 503, 504].includes(status)) return true;
+  const status = getErrorStatus(error);
 
-  const msg = String(error?.message || "").toLowerCase();
+  if ([408, 429, 500, 502, 503, 504].includes(status)) {
+    return true;
+  }
+
+  const msg = getErrorMessage(error).toLowerCase();
+
   return (
     msg.includes("timeout") ||
     msg.includes("timed out") ||
@@ -50,7 +89,9 @@ function isRetryable(error: any): boolean {
     msg.includes("fetch failed") ||
     msg.includes("rate limit") ||
     msg.includes("resource exhausted") ||
-    msg.includes("unavailable")
+    msg.includes("unavailable") ||
+    msg.includes("high demand") ||
+    msg.includes("temporarily unavailable")
   );
 }
 
@@ -60,68 +101,167 @@ export async function generateResilientResponse(prompt: string): Promise<{
   isContingency?: boolean;
 }> {
   const models = getGeminiModels();
+
   const startTime = Date.now();
+
   let lastError: any = null;
 
-  for (let mIdx = 0; mIdx < models.length; mIdx++) {
-    const model = models[mIdx];
-    const maxAttempts = 1;
+  // Somente modelos com falhas temporárias entram na segunda rodada.
+  const retryableModels = new Set<string>();
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const elapsed = Date.now() - startTime;
-      if (elapsed > TOTAL_BUDGET_MS - 3000) {
-        break; // Out of overall request budget
+  async function tryModel(
+    model: string,
+    round: number,
+    requestedTimeoutMs: number
+  ): Promise<string | null> {
+    const elapsed = Date.now() - startTime;
+
+    const remainingBudget =
+      TOTAL_BUDGET_MS - elapsed - SAFETY_MARGIN_MS;
+
+    if (remainingBudget <= 1_000) {
+      console.warn(
+        `[GEMINI_BUDGET_EXHAUSTED] model=${model} round=${round} elapsedMs=${elapsed}`
+      );
+
+      return null;
+    }
+
+    const timeoutMs = Math.min(
+      requestedTimeoutMs,
+      remainingBudget
+    );
+
+    let timeoutId: any;
+
+    try {
+      const ai = getGeminiClient();
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(
+            new Error(
+              `Timeout limite excedido após ${timeoutMs}ms`
+            )
+          );
+        }, timeoutMs);
+      });
+
+      const reqPromise = ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          systemInstruction:
+            "Você é Cigano Pablo, guia espiritual e oraculista principal do Magia das Crenças. Siga integralmente as instruções e o contexto presentes em contents.",
+          maxOutputTokens: 3000,
+        },
+      });
+
+      const response = await Promise.race([
+        reqPromise,
+        timeoutPromise,
+      ]);
+
+      clearTimeout(timeoutId);
+
+      const text = response.text?.trim();
+
+      if (!text) {
+        throw new Error("Resposta vazia da IA.");
       }
 
-      const timeoutMs = Math.min(INDIVIDUAL_TIMEOUT_MS, TOTAL_BUDGET_MS - elapsed);
-      let timeoutId: any;
+      console.info(
+        `[GEMINI_SUCCESS] model=${model} round=${round} elapsedMs=${
+          Date.now() - startTime
+        }`
+      );
 
-      try {
-        const ai = getGeminiClient();
+      return text;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
 
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error("Timeout limite excedido")), timeoutMs);
-        });
+      lastError = error;
 
-        const reqPromise = ai.models.generateContent({
+      const status = getErrorStatus(error);
+      const retryable = isRetryable(error);
+      const message = getErrorMessage(error);
+
+      console.warn(
+        `[GEMINI_ATTEMPT_FAILED] model=${model} round=${round} status=${
+          status || "unknown"
+        } retryable=${retryable} elapsedMs=${
+          Date.now() - startTime
+        } error=${message}`
+      );
+
+      if (retryable) {
+        retryableModels.add(model);
+      }
+
+      return null;
+    }
+  }
+
+  // ==================================================
+  // RODADA 1
+  // ==================================================
+
+  for (const model of models) {
+    const text = await tryModel(
+      model,
+      1,
+      FIRST_ROUND_TIMEOUT_MS
+    );
+
+    if (text) {
+      return {
+        text,
+        model,
+      };
+    }
+  }
+
+  // ==================================================
+  // RODADA 2
+  // Somente erros temporários: 503, 429, timeout etc.
+  // ==================================================
+
+  if (retryableModels.size > 0) {
+    console.warn(
+      `[GEMINI_SECOND_ROUND] models=${[
+        ...retryableModels,
+      ].join(",")}`
+    );
+
+    for (const model of retryableModels) {
+      const text = await tryModel(
+        model,
+        2,
+        SECOND_ROUND_TIMEOUT_MS
+      );
+
+      if (text) {
+        return {
+          text,
           model,
-          contents: prompt,
-          config: {
-            systemInstruction:
-              "Você é Cigano Pablo, guia espiritual e oraculista principal do Magia das Crenças. Siga integralmente as instruções e o contexto presentes em contents.",
-            maxOutputTokens: 3000,
-          },
-        });
-
-        const response = await Promise.race([reqPromise, timeoutPromise]);
-        clearTimeout(timeoutId);
-
-        const text = response.text?.trim();
-        if (text) {
-          return { text, model };
-        }
-        throw new Error("Resposta vazia da IA.");
-      } catch (err: any) {
-        clearTimeout(timeoutId);
-        lastError = err;
-
-        if (!isRetryable(err) || attempt >= maxAttempts - 1) {
-          break; // Move to next model
-        }
-
-        // Exponential backoff with jitter
-        const jitter = Math.random() * 300;
-        const delay = Math.min(2500, Math.pow(2, attempt) * 600 + jitter);
-        await new Promise((r) => setTimeout(r, delay));
+        };
       }
     }
   }
 
-  console.error("[GEMINI_RESILIENT_EXHAUSTED] Error:", lastError?.message || lastError);
+  console.error(
+    "[GEMINI_RESILIENT_EXHAUSTED] Error:",
+    getErrorMessage(lastError)
+  );
 
-  // Friendly spiritual contingency fallback
+  // Contingência final:
+  // consult.ts identifica isContingency e estorna os créditos.
   return {
-    text: "Eu, cigano Pablo vou ajudar a decifrar o enigma de sua vida. Atente-se a essa leitura.\n\nNeste momento, os ventos e as energias da estrada estão se assentando e as correntes espirituais pedem alguns instantes de serenidade. Respire fundo, firme seus pensamentos naquilo que seu coração busca saber e consulte novamente em breve. Os sinais permanecem vivos e o destino se revelará no momento certo.",
+    text:
+      "Eu, cigano Pablo vou ajudar a decifrar o enigma de sua vida. Atente-se a essa leitura.\n\n" +
+      "Neste momento, os ventos e as energias da estrada estão se assentando e as correntes espirituais pedem alguns instantes de serenidade. " +
+      "Respire fundo, firme seus pensamentos naquilo que seu coração busca saber e consulte novamente em breve. " +
+      "Os sinais permanecem vivos e o destino se revelará no momento certo.",
     model: "contingency_fallback",
     isContingency: true,
   };
