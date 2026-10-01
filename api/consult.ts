@@ -342,7 +342,7 @@ export default async function handler(req: any, res: any) {
           oracle: cleanOracleContext?.oracle || "geral",
           cost,
           message: cleanMessage.slice(0, 1000),
-          response: geminiRes.text.slice(0, 4000),
+          response: geminiRes.text,
           model: geminiRes.model,
           isContingency: false,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
