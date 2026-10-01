@@ -1,6 +1,5 @@
 import admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
-import firebaseConfig from "../../firebase-applet-config.json";
 
 let initialized = false;
 
@@ -11,9 +10,8 @@ export function initFirebaseAdmin() {
   }
 
   const projectId =
-    process.env.FIREBASE_PROJECT_ID ||
-    firebaseConfig.projectId ||
-    "gen-lang-client-0138178639";
+  process.env.FIREBASE_PROJECT_ID ||
+  "gen-lang-client-0138178639";
 
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
@@ -53,9 +51,8 @@ export function initFirebaseAdmin() {
 export function getDb() {
   initFirebaseAdmin();
   const dbId =
-    process.env.FIRESTORE_DATABASE_ID ||
-    firebaseConfig.firestoreDatabaseId ||
-    "(default)";
+  process.env.FIRESTORE_DATABASE_ID ||
+  "cigano";
 
   return getFirestore(undefined, dbId);
 }
