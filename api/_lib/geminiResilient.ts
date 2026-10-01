@@ -101,6 +101,9 @@ export async function generateResilientResponse(prompt: string): Promise<{
   isContingency?: boolean;
 }> {
   const models = getGeminiModels();
+console.info(
+  `[GEMINI_MODELS] count=${models.length} models=${models.join(",")}`
+);
 
   const startTime = Date.now();
 
@@ -135,6 +138,11 @@ export async function generateResilientResponse(prompt: string): Promise<{
     let timeoutId: any;
 
     try {
+
+
+console.info(
+  `[GEMINI_ATTEMPT_START] model=${model} round=${round} elapsedMs=${Date.now() - startTime}`
+);
       const ai = getGeminiClient();
 
       const timeoutPromise = new Promise<never>((_, reject) => {
