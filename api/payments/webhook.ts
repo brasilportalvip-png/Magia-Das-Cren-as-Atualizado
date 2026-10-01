@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { MercadoPagoConfig, Payment } from "mercadopago";
-import { getDb, admin } from "../_lib/firebaseAdmin";
-import { PLANS } from "./create";
+import { getDb, admin } from "../_lib/firebaseAdmin.js";
+import { PLANS } from "./create.js";
 
 export function verifyWebhookSignature(req: any): { valid: boolean; reason?: string } {
   const secret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;

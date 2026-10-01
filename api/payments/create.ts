@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { MercadoPagoConfig, Preference } from "mercadopago";
-import { verifyAuthToken, getDb, admin } from "../_lib/firebaseAdmin";
-import { checkRateLimit, getClientIp } from "../_lib/rateLimit";
+import { verifyAuthToken, getDb, admin } from "../_lib/firebaseAdmin.js";
+import { checkRateLimit, getClientIp } from "../_lib/rateLimit.js";
 
 export const PLANS: Record<
   string,

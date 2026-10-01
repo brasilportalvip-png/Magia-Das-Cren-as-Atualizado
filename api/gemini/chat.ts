@@ -1,4 +1,4 @@
-import consultHandler from "../consult";
+import consultHandler from "../consult.js";
 
 // Backward-compatible alias routing to the secured consult engine
 export default async function handler(req: any, res: any) {

@@ -1,13 +1,13 @@
 import crypto from "crypto";
-import { verifyAuthToken, getDb, admin } from "./_lib/firebaseAdmin";
-import { checkRateLimit, getClientIp } from "./_lib/rateLimit";
+import { verifyAuthToken, getDb, admin } from "./_lib/firebaseAdmin.js";
+import { checkRateLimit, getClientIp } from "./_lib/rateLimit.js";
 import {
   calculateConsultationCost,
   debitCredits,
   refundCredits,
   markDebitCompleted,
-} from "./_lib/ledger";
-import { generateResilientResponse } from "./_lib/geminiResilient";
+} from "./_lib/ledger.js";
+import { generateResilientResponse } from "./_lib/geminiResilient.js";
 
 function getPabloConsultationTime() {
   const now = new Date();

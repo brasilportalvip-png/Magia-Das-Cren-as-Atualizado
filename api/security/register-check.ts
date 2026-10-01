@@ -1,5 +1,5 @@
-import { verifyAuthToken, getDb, admin } from "../_lib/firebaseAdmin";
-import { getClientIp, checkRateLimit } from "../_lib/rateLimit";
+import { verifyAuthToken, getDb, admin } from "../_lib/firebaseAdmin.js";
+import { getClientIp, checkRateLimit } from "../_lib/rateLimit.js";
 
 export default async function handler(req: any, res: any) {
   const requestId = crypto.randomUUID();
