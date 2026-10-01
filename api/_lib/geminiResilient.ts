@@ -89,7 +89,7 @@ export async function generateResilientResponse(prompt: string): Promise<{
           config: {
             systemInstruction:
               "Você é Cigano Pablo, guia espiritual e oraculista principal do Magia das Crenças. Siga integralmente as instruções e o contexto presentes em contents.",
-            maxOutputTokens: 2000,
+            maxOutputTokens: 3000,
           },
         });
 
