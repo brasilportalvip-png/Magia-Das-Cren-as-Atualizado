@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Sparkles, Heart, DollarSign, Activity, Briefcase, Home } from "lucide-react";
+import { Send, Sparkles, Heart, DollarSign, Activity, Briefcase, Home, Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import { Message, SpiritualUser } from "../types/spiritual";
@@ -443,17 +443,7 @@ Não invente cartas, quedas ou Odùs fora do resultado fornecido.
         onNewAdvice(adviceSnippet);
       }
 
-      if (user && user.uid && !user.uid.startsWith('guest')) {
-        try {
-          await addDoc(collection(db, `users/${user.uid}/consultations`), {
-            messages: [...messages, userMessage, modelMessage],
-            timestamp: serverTimestamp(),
-            type: 'general'
-          });
-        } catch (err) {
-          handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}/consultations`);
-        }
-      }
+      // A consulta já é salva com segurança no servidor através da API /api/consult
 
     } catch (error: any) {
       console.error("Chat error:", error);
@@ -482,23 +472,48 @@ Não invente cartas, quedas ou Odùs fora do resultado fornecido.
     }
   };
 
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredMessages = searchQuery.trim()
+    ? messages.filter((m) =>
+        m.content.toLowerCase().includes(searchQuery.toLowerCase().trim())
+      )
+    : messages;
+
   return (
     <div className="flex flex-col h-full bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
       <div className="p-4 border-b border-white/5 bg-black/40 backdrop-blur-xl">
         <div className="flex items-center justify-between mb-3">
           <p className="text-[11px] uppercase tracking-[0.2em] text-amber-500 font-black gold-glow">Oráculo Digital</p>
-          <div className="flex gap-1">
+          <div className="flex gap-1 items-center">
+            {searchQuery && (
+              <span className="text-[10px] text-amber-400/80 mr-2 font-mono">
+                {filteredMessages.length} {filteredMessages.length === 1 ? "resultado" : "resultados"}
+              </span>
+            )}
             <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
             <div className="w-1.5 h-1.5 rounded-full bg-amber-500/30"></div>
           </div>
         </div>
         <div className="relative group">
+          <Search className="absolute left-3.5 top-3 text-white/30 group-focus-within:text-amber-500 transition-colors" size={14} />
           <input
             type="text"
-            placeholder="Buscar saber oculto..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs italic placeholder:text-white/20 focus:outline-none focus:border-amber-500/50 transition-all group-focus-within:bg-white/10 shadow-inner"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar saber oculto ou revelação..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-8 py-2.5 text-xs placeholder:text-white/20 focus:outline-none focus:border-amber-500/50 transition-all group-focus-within:bg-white/10 shadow-inner text-white"
           />
-          <Sparkles className="absolute right-4 top-2.5 text-amber-500/40 group-focus-within:text-amber-500 transition-colors" size={16} />
+          {searchQuery ? (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-2.5 text-white/40 hover:text-white transition-colors"
+            >
+              <X size={14} />
+            </button>
+          ) : (
+            <Sparkles className="absolute right-3.5 top-3 text-amber-500/40 group-focus-within:text-amber-500 transition-colors pointer-events-none" size={14} />
+          )}
         </div>
       </div>
 
@@ -506,8 +521,26 @@ Não invente cartas, quedas ou Odùs fora do resultado fornecido.
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 scrollbar-visible"
       >
+        {searchQuery && filteredMessages.length === 0 && (
+          <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-950/20 text-center space-y-3">
+            <p className="text-xs text-amber-200/80">
+              Nenhuma revelação anterior encontrada sobre "{searchQuery}".
+            </p>
+            <button
+              onClick={() => {
+                const term = searchQuery;
+                setSearchQuery("");
+                handleSendMessage(`O que o oráculo revela sobre: ${term}?`);
+              }}
+              className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-2"
+            >
+              <Sparkles size={14} /> Perguntar a Pablo sobre "{searchQuery}"
+            </button>
+          </div>
+        )}
+
         <AnimatePresence initial={false}>
-          {messages.map((msg, idx) => (
+          {filteredMessages.map((msg, idx) => (
             <motion.div
               key={idx}
               ref={idx === messages.length - 1 ? lastMessageRef : null}

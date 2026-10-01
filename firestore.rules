@@ -21,27 +21,111 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email == 'brasilportalvip@gmail.com';
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        (request.auth.token.email == 'brasilportalvip@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    function hasOnlyAllowedProfileKeys(keys) {
+      return keys.hasOnly([
+        'uid',
+        'displayName',
+        'email',
+        'birthDate',
+        'birthTime',
+        'sign',
+        'lifePathNumber',
+        'spiritualElement',
+        'guardianAngel',
+        'regentOdu',
+        'nameNumber',
+        'deviceId',
+        'createdAt',
+        'updatedAt'
+      ]);
+    }
+
+    function isSafeProfileUpdate() {
+      // WHITELIST RIGOROSA: o cliente só pode atualizar campos de perfil espiritual e visual
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'displayName',
+        'birthDate',
+        'birthTime',
+        'sign',
+        'lifePathNumber',
+        'spiritualElement',
+        'guardianAngel',
+        'regentOdu',
+        'nameNumber',
+        'updatedAt'
+      ]);
     }
 
     // Users collection
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      // Permitir list para verificação de anti-pirataria (deviceId)
-      allow list: if isSignedIn();
-      allow create: if isOwner(userId);
-      // Permitir atualização se for o dono ou admin
-      allow update: if isOwner(userId) || isAdmin();
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if false; // NUNCA permitir listagem aberta da coleção de usuários
 
-      // Consultations subcollection
+      // Criação de perfil inicial pelo próprio usuário autenticado
+      // O cliente NUNCA pode inicializar credits, plan ou campos de segurança
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && hasOnlyAllowedProfileKeys(request.resource.data.keys())
+        && !('credits' in request.resource.data)
+        && !('plan' in request.resource.data)
+        && !('promotionalCreditsBlocked' in request.resource.data)
+        && !('fraudReasons' in request.resource.data)
+        && !('role' in request.resource.data)
+        && !('isAdmin' in request.resource.data)
+        && !('admin' in request.resource.data);
+
+      // Atualização estritamente por whitelist
+      allow update: if (isOwner(userId) && isSafeProfileUpdate()) || isAdmin();
+      
+      // Exclusão direta pelo cliente proibida: deve passar por /api/account/delete
+      allow delete: if false;
+
+      // Subcoleções do usuário
       match /consultations/{consultationId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if false; // Criado e gerenciado exclusivamente via servidor
       }
 
-      // Transactions subcollection
-      match /transactions/{transactionId} {
-        allow read: if isOwner(userId);
+      match /credit_logs/{logId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if false; // Livro-razão (ledger) exclusivamente manipulado no servidor
       }
+
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if false;
+      }
+    }
+
+    // Coleções administrativas e de segurança do servidor - bloqueadas no cliente
+    match /security_logs/{logId} {
+      allow read, write: if false;
+    }
+
+    match /payment_logs/{paymentId} {
+      allow read, write: if false;
+    }
+
+    match /payment_intents/{intentId} {
+      allow read, write: if false;
+    }
+
+    match /payments/{paymentId} {
+      allow read, write: if false;
+    }
+
+    match /payment_webhooks/{webhookId} {
+      allow read, write: if false;
+    }
+
+    match /payment_errors/{errorId} {
+      allow read, write: if false;
     }
   }
 }

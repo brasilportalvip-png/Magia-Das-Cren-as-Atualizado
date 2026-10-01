@@ -1,3 +1,5 @@
+import { auth } from "../lib/firebase";
+
 export async function generateSpiritualResponse(
   messages: any[],
   user?: any,
@@ -38,16 +40,17 @@ export async function generateSpiritualResponse(
       }))
       .filter((item: any) => item.text);
 
-    const response = await fetch("/api/gemini/chat", {
+    const token = await auth.currentUser?.getIdToken();
+
+    const response = await fetch("/api/consult", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({
         message: messageText,
         history,
-        user,
-        cost,
         oracleContext,
       }),
     });

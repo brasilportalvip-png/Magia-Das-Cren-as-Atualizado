@@ -7,8 +7,10 @@ import {
   Crown,
   ArrowRight,
   CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { SPIRITUAL_PACKAGES, CreditPackage } from '../types/spiritual';
+import { auth } from '../lib/firebase';
 
 interface CreditPackagesModalProps {
   isOpen: boolean;
@@ -22,44 +24,48 @@ export default function CreditPackagesModal({
   userId,
 }: CreditPackagesModalProps) {
   const [loading, setLoading] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handlePurchase = async (pkg: CreditPackage) => {
+    setErrorMessage(null);
     try {
       if (pkg.id === 'free') {
         onClose();
         return;
       }
 
-      if (!userId) {
-        alert('Faça login para comprar créditos.');
+      if (!userId || !auth.currentUser) {
+        setErrorMessage('Faça login para adquirir pacotes de créditos.');
         return;
       }
 
       setLoading(pkg.id);
 
+      const token = await auth.currentUser.getIdToken();
+
       const response = await fetch('/api/payments/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           packageId: pkg.id,
-          userId,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok || !data.checkoutUrl) {
-        throw new Error(data.error || 'Erro ao criar pagamento.');
+        throw new Error(data.error || 'Erro ao criar preferência de pagamento.');
       }
 
       window.location.href = data.checkoutUrl;
     } catch (error: any) {
       console.error('[PAYMENT_FRONTEND_ERROR]', error);
-      alert(error.message || 'Erro ao iniciar pagamento.');
+      setErrorMessage(error.message || 'Erro ao iniciar pagamento no Mercado Pago.');
     } finally {
       setLoading(null);
     }
@@ -93,6 +99,13 @@ export default function CreditPackagesModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 scrollbar-visible">
+          {errorMessage && (
+            <div className="mb-6 p-4 bg-rose-950/40 border border-rose-500/30 rounded-2xl flex items-center gap-3 text-rose-300 text-xs font-bold">
+              <AlertCircle size={18} className="shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {SPIRITUAL_PACKAGES.map((pkg) => (
               <motion.div

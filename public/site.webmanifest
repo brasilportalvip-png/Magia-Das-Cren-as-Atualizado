@@ -1,0 +1,17 @@
+{
+  "name": "Magia das Crenças | Cigano Pablo",
+  "short_name": "Magia Crenças",
+  "description": "Portal de espiritualidade e oráculos com Cigano Pablo, Tarot, Búzios, Ifá e Astrologia.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#f59e0b",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/image/Magia%20Das%20Cren%C3%A7as%20Logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ]
+}

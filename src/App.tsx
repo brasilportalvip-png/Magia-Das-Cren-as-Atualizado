@@ -12,6 +12,7 @@ import SpiritualButtons from "./components/SpiritualButtons";
 import AuthModal from "./components/AuthModal";
 import CreditPackagesModal from "./components/CreditPackagesModal";
 import FreeLimitModal from "./components/FreeLimitModal";
+import LegalPagesModal, { LegalPageType } from "./components/LegalPages";
 import { SpiritualUser } from "./types/spiritual";
 
 export default function App() {
@@ -21,7 +22,14 @@ export default function App() {
   const [showPackages, setShowPackages] = useState(false);
   const [showFreeLimit, setShowFreeLimit] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
+  const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: LegalPageType }>({
+    isOpen: false,
+    type: "privacy",
+  });
+  const [paymentNotification, setPaymentNotification] = useState<{
+    type: "loading" | "success" | "pending" | "error";
+    message: string;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState<string>("home");
   const [currentAdvice, setCurrentAdvice] = useState<string>(
     "O universo ainda possui mensagens ocultas para você. Busque o saber através das ferramentas sagradas."
@@ -40,33 +48,82 @@ export default function App() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
 
-    if (urlParams.get("payment") === "success") {
-      const credits = urlParams.get("credits");
-      setPaymentSuccess(credits);
+    const paymentParam = urlParams.get("payment");
+    const refParam = urlParams.get("ref");
+    const paymentIdParam =
+      urlParams.get("payment_id") || urlParams.get("collection_id");
+
+    if (paymentParam) {
       window.history.replaceState({}, document.title, window.location.pathname);
-      setTimeout(() => setPaymentSuccess(null), 10000);
+
+      if (paymentParam === "failure") {
+        setPaymentNotification({
+          type: "error",
+          message:
+            "O pagamento não foi concluído ou foi cancelado no Mercado Pago.",
+        });
+        setTimeout(() => setPaymentNotification(null), 8000);
+      } else {
+        setPaymentNotification({
+          type: "loading",
+          message: "Confirmando status do seu pagamento com o Mercado Pago...",
+        });
+
+        // P1-57: Validate status with authenticated backend
+        (async () => {
+          try {
+            const token = await auth.currentUser?.getIdToken();
+            const query = new URLSearchParams();
+            if (refParam) query.set("ref", refParam);
+            if (paymentIdParam) query.set("paymentId", paymentIdParam);
+
+            const res = await fetch(`/api/payments/status?${query.toString()}`, {
+              headers: {
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+            });
+
+            const data = await res.json();
+            if (res.ok && data.approved) {
+              setPaymentNotification({
+                type: "success",
+                message:
+                  "Pagamento aprovado com sucesso! Seus créditos espirituais foram liberados.",
+              });
+            } else if (res.ok && data.status === "pending") {
+              setPaymentNotification({
+                type: "pending",
+                message:
+                  "Pagamento em análise pelo Mercado Pago. Seus créditos serão liberados em instantes.",
+              });
+            } else {
+              setPaymentNotification({
+                type: "pending",
+                message:
+                  "Recebemos o retorno do Mercado Pago. O saldo será atualizado assim que compensado.",
+              });
+            }
+          } catch {
+            setPaymentNotification({
+              type: "pending",
+              message: "Processando liberação de créditos...",
+            });
+          }
+          setTimeout(() => setPaymentNotification(null), 10000);
+        })();
+      }
     }
 
-
-
-
-
-
-
-
-if (urlParams.get("payment") !== "success") {
-  signOut(auth).catch(console.error);
-  sessionStorage.removeItem("magia_crencas_chat_session");
-  sessionStorage.removeItem("magia_crencas_chat_open");
-  setUser(null);
-  setUid(null);
-  setShowAuth(true);
-}
-
-
-
-
-
+    const path = window.location.pathname.toLowerCase();
+    if (path.includes("privacidade")) {
+      setLegalModal({ isOpen: true, type: "privacy" });
+    } else if (path.includes("termos")) {
+      setLegalModal({ isOpen: true, type: "terms" });
+    } else if (path.includes("cookies")) {
+      setLegalModal({ isOpen: true, type: "cookies" });
+    } else if (path.includes("contato")) {
+      setLegalModal({ isOpen: true, type: "contact" });
+    }
 
     const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
       setUid(authUser?.uid || null);
@@ -99,47 +156,11 @@ if (urlParams.get("payment") !== "success") {
         if (snapshot.exists()) {
           const userData = snapshot.data() as SpiritualUser;
 
-          if (auth.currentUser?.email === "brasilportalvip@gmail.com") {
-            if ((userData.credits || 0) < 1000 || userData.plan !== "gold") {
-              updateDoc(userRef, {
-                credits: 1000,
-                plan: "gold",
-              }).catch(console.error);
-            }
-          }
-
           setUser(userData);
 
-          if (
-            userData.plan === "free" &&
-            !userData.promotionalCreditsBlocked
-          ) {
-            const now = new Date();
-            const lastRefill = userData.lastFreeRefillAt
-              ? new Date(userData.lastFreeRefillAt)
-              : new Date(userData.createdAt);
-
-            const diffMs = now.getTime() - lastRefill.getTime();
-            const diffHours = diffMs / (1000 * 60 * 60);
-            const refillsUsed = userData.freeRefillsCount || 0;
-
-            if (diffHours >= 48 && refillsUsed < 2 && userData.credits < 7) {
-              updateDoc(userRef, {
-                credits: (userData.credits || 0) + 7,
-                freeRefillsCount: refillsUsed + 1,
-                lastFreeRefillAt: now.toISOString(),
-              }).catch(console.error);
-            }
-          }
-
-
-
           if (!userData.birthDate || !userData.displayName) {
-  setShowAuth(true);
-}
-
-
-
+            setShowAuth(true);
+          }
         } else {
           setUser(null);
           setShowAuth(true);
@@ -165,32 +186,14 @@ if (urlParams.get("payment") !== "success") {
       return;
     }
 
-    const userRef = doc(db, "users", user.uid);
-
     if (!user.birthDate || !user.displayName) {
-  setShowAuth(true);
-  throw new Error("Dados de nascimento essenciais ausentes");
-}
+      setShowAuth(true);
+      throw new Error("Dados de nascimento essenciais ausentes");
+    }
 
-    try {
-      if ((user.credits || 0) >= amount) {
-        await updateDoc(userRef, {
-          credits: Math.max(0, (user.credits || 0) - amount),
-          lastCreditUseAt: new Date(),
-        });
-      } else {
-        setShowPackages(true);
-        throw new Error("Créditos insuficientes");
-      }
-    } catch (err) {
-      if (
-        err instanceof Error &&
-        (err.message === "Ciclo gratuito atingido" || err.message === "Créditos insuficientes")
-      ) {
-        throw err;
-      }
-
-      handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
+    if ((user.credits || 0) < amount) {
+      setShowPackages(true);
+      throw new Error("Créditos insuficientes");
     }
   };
 
@@ -362,8 +365,25 @@ if (urlParams.get("payment") !== "success") {
         )}
       </main>
 
-      <footer className="fixed bottom-0 lg:relative z-40 w-full lg:px-8 lg:py-4 border-t border-white/5 bg-black/60 backdrop-blur-xl shrink-0 h-36 lg:h-auto overflow-hidden pb-8 lg:pb-6">
+      <footer className="fixed bottom-0 lg:relative z-40 w-full lg:px-8 lg:py-3 border-t border-white/5 bg-black/70 backdrop-blur-xl shrink-0 h-36 lg:h-auto overflow-hidden pb-8 lg:pb-3 flex flex-col items-center gap-2">
         <SpiritualButtons onSelect={setActiveTab} />
+        <div className="hidden lg:flex flex-wrap items-center justify-center gap-4 text-[10px] text-white/40 pt-1">
+          <span>© 2026 Magia das Crenças</span>
+          <span>•</span>
+          <button onClick={() => setLegalModal({ isOpen: true, type: "privacy" })} className="hover:text-amber-400 underline decoration-white/20 transition-colors">Privacidade (LGPD)</button>
+          <span>•</span>
+          <button onClick={() => setLegalModal({ isOpen: true, type: "terms" })} className="hover:text-amber-400 underline decoration-white/20 transition-colors">Termos de Uso</button>
+          <span>•</span>
+          <button onClick={() => setLegalModal({ isOpen: true, type: "cookies" })} className="hover:text-amber-400 underline decoration-white/20 transition-colors">Cookies</button>
+          <span>•</span>
+          <button onClick={() => setLegalModal({ isOpen: true, type: "contact" })} className="hover:text-amber-400 underline decoration-white/20 transition-colors">Contato</button>
+          {user && (
+            <>
+              <span>•</span>
+              <button onClick={() => setLegalModal({ isOpen: true, type: "deletion" })} className="text-rose-400/70 hover:text-rose-400 underline decoration-rose-500/20 transition-colors">Excluir Conta</button>
+            </>
+          )}
+        </div>
       </footer>
 
       <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} />
@@ -380,6 +400,16 @@ if (urlParams.get("payment") !== "success") {
         onPurchaseCredits={() => {
           setShowFreeLimit(false);
           setShowPackages(true);
+        }}
+      />
+
+      <LegalPagesModal
+        isOpen={legalModal.isOpen}
+        type={legalModal.type}
+        onClose={() => setLegalModal((prev) => ({ ...prev, isOpen: false }))}
+        onAccountDeleted={() => {
+          setUser(null);
+          setShowAuth(true);
         }}
       />
 
@@ -425,7 +455,8 @@ if (urlParams.get("payment") !== "success") {
         onClick={() =>
           window.open(
             "https://chat.whatsapp.com/JqXdWPrCVxz1NC9dXyMdso?s=cl&p=a&ilr=2&amv=1",
-            "_blank"
+            "_blank",
+            "noopener,noreferrer"
           )
         }
         className="mb-4 w-full rounded-2xl bg-green-600 py-4 font-bold text-white"
@@ -438,7 +469,8 @@ if (urlParams.get("payment") !== "success") {
         onClick={() =>
           window.open(
             "https://t.me/+EOUhr0Xa2_00NDQ5",
-            "_blank"
+            "_blank",
+            "noopener,noreferrer"
           )
         }
         className="mb-4 w-full rounded-2xl bg-sky-600 py-4 font-bold text-white"
@@ -457,34 +489,31 @@ if (urlParams.get("payment") !== "success") {
   </motion.div>
 )}
 
-
-
-
-
       <AnimatePresence>
-        {paymentSuccess && (
+        {paymentNotification && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] bg-emerald-500 text-black px-8 py-4 rounded-3xl shadow-[0_0_50px_rgba(16,185,129,0.4)] flex items-center gap-4 border-2 border-emerald-400/50 backdrop-blur-xl"
+            className={`fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] px-8 py-4 rounded-3xl shadow-2xl flex items-center gap-4 border-2 backdrop-blur-xl max-w-md text-xs font-bold ${
+              paymentNotification.type === "success"
+                ? "bg-emerald-500 text-black border-emerald-400/50"
+                : paymentNotification.type === "error"
+                ? "bg-rose-900 text-white border-rose-500/50"
+                : "bg-amber-500 text-black border-amber-400/50"
+            }`}
           >
-            <div className="w-12 h-12 bg-black/20 rounded-2xl flex items-center justify-center">
-              <Zap size={24} fill="currentColor" />
+            <div className="w-10 h-10 bg-black/20 rounded-2xl flex items-center justify-center shrink-0">
+              <Zap size={20} fill="currentColor" />
             </div>
 
-            <div>
-              <h4 className="font-black uppercase tracking-widest text-sm">
-                Energia Restaurada!
-              </h4>
-              <p className="text-[10px] font-bold opacity-80">
-                Você recebeu {paymentSuccess} créditos de Energia Vital.
-              </p>
+            <div className="flex-1">
+              <p>{paymentNotification.message}</p>
             </div>
 
             <button
-              onClick={() => setPaymentSuccess(null)}
-              className="ml-4 p-2 hover:bg-black/10 rounded-xl transition-colors"
+              onClick={() => setPaymentNotification(null)}
+              className="p-1 hover:bg-black/10 rounded-xl transition-colors"
             >
               <X size={18} />
             </button>

@@ -95,14 +95,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     email: string;
     deviceId: string;
   }): Promise<SecurityCheckResult> => {
+    const token = await auth.currentUser?.getIdToken();
+
     const response = await fetch('/api/security/register-check', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({
-        uid: params.uid,
-        email: params.email,
         deviceId: params.deviceId,
         browser: navigator.userAgent,
         sessionSign: `${navigator.language}-${navigator.platform}-${screen.width}x${screen.height}`
@@ -190,7 +191,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
       const spiritualData = buildSpiritualData();
 
-      const updateData: any = {
+      const profileData: any = {
         uid,
         displayName: name,
         email: auth.currentUser?.email || email,
@@ -198,27 +199,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         birthTime,
         ...spiritualData,
         deviceId,
-        updatedAt: new Date().toISOString()
+        createdAt: userData?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
+      await setDoc(userDocRef, profileData, { merge: true });
+
       if (!userData) {
-        const securityData = await runSecurityCheck({
+        await runSecurityCheck({
           uid,
           email: auth.currentUser?.email || email,
-          deviceId
+          deviceId,
         });
-
-        updateData.credits = securityData.initialCredits;
-        updateData.promotionalCreditsBlocked = securityData.promotionalCreditsBlocked;
-        updateData.fraudReasons = securityData.fraudReasons;
-        updateData.plan = 'free';
-        updateData.freeQueriesUsed = 0;
-        updateData.freeRefillsCount = 0;
-        updateData.spiritualLevel = 1;
-        updateData.createdAt = new Date().toISOString();
       }
-
-      await setDoc(userDocRef, updateData, { merge: true });
 
       onClose();
     } catch (err) {
