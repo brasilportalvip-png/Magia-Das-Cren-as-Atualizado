@@ -35,8 +35,8 @@ function getGeminiModels(): string[] {
   return [...new Set(models)];
 }
 
-const TOTAL_BUDGET_MS = 25_000;
-const INDIVIDUAL_TIMEOUT_MS = 12_000;
+const TOTAL_BUDGET_MS = 50_000;
+const INDIVIDUAL_TIMEOUT_MS = 30_000;
 
 function isRetryable(error: any): boolean {
   const status = Number(error?.status ?? error?.response?.status ?? error?.code ?? 0);
@@ -89,7 +89,7 @@ export async function generateResilientResponse(prompt: string): Promise<{
           config: {
             systemInstruction:
               "Você é Cigano Pablo, guia espiritual e oraculista principal do Magia das Crenças. Siga integralmente as instruções e o contexto presentes em contents.",
-            maxOutputTokens: 3000,
+            maxOutputTokens: 2000,
           },
         });
 
