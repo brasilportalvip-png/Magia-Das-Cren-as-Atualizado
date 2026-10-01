@@ -194,8 +194,22 @@ export async function generateResilientResponse(prompt: string): Promise<{
         } error=${message}`
       );
 
-      if (retryable) {
+      const quotaExceeded =
+        status === 429 &&
+        (
+          message.toLowerCase().includes("quota exceeded") ||
+          message.toLowerCase().includes("resource_exhausted") ||
+          message.toLowerCase().includes("rate limit")
+        );
+
+      if (retryable && !quotaExceeded) {
         retryableModels.add(model);
+      }
+
+      if (quotaExceeded) {
+        console.warn(
+          `[GEMINI_QUOTA_SKIP] model=${model} round=${round} status=429`
+        );
       }
 
       return null;
