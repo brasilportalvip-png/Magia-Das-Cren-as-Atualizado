@@ -53,16 +53,34 @@ export default async function handler(req: any, res: any) {
     const db = getDb();
     const userRef = db.collection("users").doc(uid);
 
-    // P1-2: Recursive deletion of all subcollections in batches
-    const subcollections = ["consultations", "credit_logs", "transactions"];
-    for (const sub of subcollections) {
-      const snap = await userRef.collection(sub).get();
-      if (!snap.empty) {
-        const batch = db.batch();
-        snap.forEach((doc) => batch.delete(doc.ref));
-        await batch.commit();
-      }
+   // P1-2: Delete user subcollections safely in batches
+const subcollections = ["consultations", "credit_logs", "transactions"];
+
+for (const sub of subcollections) {
+  const subcollectionRef = userRef.collection(sub);
+
+  while (true) {
+    const snap = await subcollectionRef
+      .limit(400)
+      .get();
+
+    if (snap.empty) {
+      break;
     }
+
+    const batch = db.batch();
+
+    snap.docs.forEach((document) => {
+      batch.delete(document.ref);
+    });
+
+    await batch.commit();
+
+    if (snap.size < 400) {
+      break;
+    }
+  }
+}
 
     // P1-1 & P1-3: Anonymize financial records for legal/fiscal retention
     const anonymizedHash = crypto.createHash("sha256").update(uid).digest("hex").slice(0, 16);

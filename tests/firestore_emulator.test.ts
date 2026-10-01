@@ -13,25 +13,21 @@ const PROJECT_ID = "magia-crencas-emulator-test";
 const RULES_PATH = path.resolve(__dirname, "../firestore.rules");
 
 describe("Firestore Rules - Real Emulator Unit Testing", () => {
-  let testEnv: RulesTestEnvironment | null = null;
-  let emulatorAvailable = false;
+  let testEnv: RulesTestEnvironment;
 
   beforeAll(async () => {
-    try {
-      const rules = fs.readFileSync(RULES_PATH, "utf8");
-      testEnv = await initializeTestEnvironment({
-        projectId: PROJECT_ID,
-        firestore: {
-          rules,
-          host: "127.0.0.1",
-          port: 8080,
-        },
-      });
-      emulatorAvailable = true;
-    } catch (e: any) {
-      console.warn("[EMULATOR_INIT_WARN] Firestore emulator connection:", e?.message);
-      emulatorAvailable = false;
-    }
+    const rules = fs.readFileSync(RULES_PATH, "utf8");
+
+    testEnv = await initializeTestEnvironment({
+      projectId: PROJECT_ID,
+      firestore: {
+        rules,
+        host: "127.0.0.1",
+        port: 8080,
+      },
+    });
+
+    
   });
 
   afterAll(async () => {
@@ -49,14 +45,14 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
   // A. Usuário não autenticado
   describe("A. Usuário Não Autenticado", () => {
     it("não pode ler users/{uid}", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       const unauth = testEnv.unauthenticatedContext();
       const ref = doc(unauth.firestore(), "users/user_123");
       await assertFails(getDoc(ref));
     });
 
     it("não pode gravar users/{uid}", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       const unauth = testEnv.unauthenticatedContext();
       const ref = doc(unauth.firestore(), "users/user_123");
       await assertFails(
@@ -71,7 +67,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
   // B. Usuário autenticado A
   describe("B. Usuário Autenticado A", () => {
     it("lê o próprio documento", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), "users/user_A"), {
           uid: "user_A",
@@ -87,7 +83,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
     });
 
     it("não lê documento de outro usuário (user_B)", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), "users/user_B"), {
           uid: "user_B",
@@ -101,14 +97,14 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
     });
 
     it("não lista a coleção users", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       const userA = testEnv.authenticatedContext("user_A");
       const col = collection(userA.firestore(), "users");
       await assertFails(getDocs(col));
     });
 
     it("não altera credits", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), "users/user_A"), {
           uid: "user_A",
@@ -124,7 +120,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
     });
 
     it("não altera plan", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), "users/user_A"), {
           uid: "user_A",
@@ -140,7 +136,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
     });
 
     it("não altera fraudReasons ou promotionalCreditsBlocked", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), "users/user_A"), {
           uid: "user_A",
@@ -155,7 +151,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
     });
 
     it("não grava subcoleções sensíveis (credit_logs, consultations, transactions)", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       const userA = testEnv.authenticatedContext("user_A");
 
       const creditLogRef = doc(userA.firestore(), "users/user_A/credit_logs/log_1");
@@ -169,7 +165,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
     });
 
     it("não apaga users/{uid} diretamente", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), "users/user_A"), {
           uid: "user_A",
@@ -186,7 +182,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
   // C. Criação
   describe("C. Criação de Usuário", () => {
     it("permite perfil com apenas campos explicitamente permitidos", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       const userNew = testEnv.authenticatedContext("user_new");
       const ref = doc(userNew.firestore(), "users/user_new");
       await assertSucceeds(
@@ -204,7 +200,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
     });
 
     it("rejeita criação contendo credits", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       const userNew = testEnv.authenticatedContext("user_new");
       const ref = doc(userNew.firestore(), "users/user_new");
       await assertFails(
@@ -217,7 +213,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
     });
 
     it("rejeita criação contendo plan", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       const userNew = testEnv.authenticatedContext("user_new");
       const ref = doc(userNew.firestore(), "users/user_new");
       await assertFails(
@@ -230,7 +226,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
     });
 
     it("rejeita criação contendo promotionalCreditsBlocked ou fraudReasons", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       const userNew = testEnv.authenticatedContext("user_new");
       const ref = doc(userNew.firestore(), "users/user_new");
       await assertFails(
@@ -243,7 +239,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
     });
 
     it("rejeita criação contendo campos administrativos desconhecidos", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       const userNew = testEnv.authenticatedContext("user_new");
       const ref = doc(userNew.firestore(), "users/user_new");
       await assertFails(
@@ -260,7 +256,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
   // D. Atualização
   describe("D. Atualização de Perfil (Whitelist)", () => {
     it("permite atualizar displayName e birthDate/birthTime", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), "users/user_A"), {
           uid: "user_A",
@@ -285,7 +281,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
     });
 
     it("rejeita qualquer campo fora da whitelist", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), "users/user_A"), {
           uid: "user_A",
@@ -306,7 +302,7 @@ describe("Firestore Rules - Real Emulator Unit Testing", () => {
   // E. Admin
   describe("E. Custom Claims de Administrador", () => {
     it("admin autenticado pode ler documentos de qualquer usuário", async () => {
-      if (!emulatorAvailable || !testEnv) return;
+      
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), "users/target_user"), {
           uid: "target_user",

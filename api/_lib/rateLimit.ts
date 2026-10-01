@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { getDb, admin } from "./firebaseAdmin.js";
 
 export interface RateLimitResult {
@@ -6,28 +7,25 @@ export interface RateLimitResult {
   retryAfterSec?: number;
 }
 
-// In-memory cache for fast hot-path, lazy-pruned per call (NO setInterval in serverless)
-const memoryCache = new Map<string, number[]>();
-
 export async function checkRateLimit(
   identifier: string,
   limit = 20,
   windowMs = 60 * 1000
 ): Promise<RateLimitResult> {
   const now = Date.now();
+  const expireSec = Math.ceil(windowMs / 1000);
 
-  // 1. Upstash Redis / Vercel KV (Distributed)
+  // 1. Upstash Redis / Vercel KV - primeira opção distribuída
   const upstashUrl =
     process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+
   const upstashToken =
     process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 
   if (upstashUrl && upstashToken) {
     try {
       const key = `rl:${identifier}`;
-      const expireSec = Math.ceil(windowMs / 1000);
 
-      // Multi-exec pipeline: INCR and EXPIRE
       const res = await fetch(`${upstashUrl}/pipeline`, {
         method: "POST",
         headers: {
@@ -43,6 +41,7 @@ export async function checkRateLimit(
       if (res.ok) {
         const data: any = await res.json();
         const count = Number(data?.[0]?.result || 1);
+
         if (count > limit) {
           return {
             allowed: false,
@@ -50,53 +49,124 @@ export async function checkRateLimit(
             retryAfterSec: expireSec,
           };
         }
+
         return {
           allowed: true,
           remaining: Math.max(0, limit - count),
         };
       }
-    } catch (e) {
-      console.warn("[UPSTASH_RATE_LIMIT_FALLBACK]", e);
+
+      console.warn(
+        "[UPSTASH_RATE_LIMIT_HTTP_ERROR]",
+        res.status,
+        res.statusText
+      );
+    } catch (error) {
+      console.warn("[UPSTASH_RATE_LIMIT_ERROR]", error);
     }
   }
 
-  // 2. In-memory sliding window fallback (Lazy-cleaned, NO setInterval)
-  let timestamps = memoryCache.get(identifier) || [];
-  timestamps = timestamps.filter((t) => now - t < windowMs);
+  // 2. Firestore - fallback distribuído seguro para Vercel
+  try {
+    const db = getDb();
 
-  if (timestamps.length >= limit) {
-    const oldest = timestamps[0];
-    const retryAfterSec = Math.max(1, Math.ceil((oldest + windowMs - now) / 1000));
-    memoryCache.set(identifier, timestamps);
+    const identifierHash = crypto
+      .createHash("sha256")
+      .update(identifier)
+      .digest("hex");
+
+    const rateRef = db
+      .collection("rate_limits")
+      .doc(identifierHash);
+
+    return await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(rateRef);
+      const data = snapshot.exists ? snapshot.data() || {} : {};
+
+      const windowStart = Number(data.windowStart || 0);
+      const count = Number(data.count || 0);
+
+      const windowExpired =
+        !windowStart || now - windowStart >= windowMs;
+
+      if (windowExpired) {
+        transaction.set(
+          rateRef,
+          {
+            count: 1,
+            windowStart: now,
+            expiresAt: admin.firestore.Timestamp.fromMillis(now + windowMs),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        return {
+          allowed: true,
+          remaining: Math.max(0, limit - 1),
+        };
+      }
+
+      if (count >= limit) {
+        const retryAfterSec = Math.max(
+          1,
+          Math.ceil((windowStart + windowMs - now) / 1000)
+        );
+
+        return {
+          allowed: false,
+          remaining: 0,
+          retryAfterSec,
+        };
+      }
+
+      const newCount = count + 1;
+
+      transaction.set(
+        rateRef,
+        {
+          count: newCount,
+          windowStart,
+          expiresAt: admin.firestore.Timestamp.fromMillis(
+            windowStart + windowMs
+          ),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      return {
+        allowed: true,
+        remaining: Math.max(0, limit - newCount),
+      };
+    });
+  } catch (error) {
+    console.error("[RATE_LIMIT_BACKEND_ERROR]", error);
+
+    // Fail closed em produção:
+    // se nenhum mecanismo distribuído funcionar, bloqueia a requisição.
+    if (process.env.NODE_ENV === "production") {
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfterSec: 60,
+      };
+    }
+
+    // Desenvolvimento local: permite continuar para não bloquear testes/dev.
     return {
-      allowed: false,
-      remaining: 0,
-      retryAfterSec,
+      allowed: true,
+      remaining: limit,
     };
   }
-
-  timestamps.push(now);
-  memoryCache.set(identifier, timestamps);
-
-  // Lazy clean cache if it grows too large
-  if (memoryCache.size > 2000) {
-    for (const [k, v] of memoryCache.entries()) {
-      if (v.length === 0 || now - v[v.length - 1] > windowMs) {
-        memoryCache.delete(k);
-      }
-    }
-  }
-
-  return {
-    allowed: true,
-    remaining: limit - timestamps.length,
-  };
 }
 
 export function getClientIp(req: any): string {
   const forwarded = req.headers?.["x-forwarded-for"];
-  if (typeof forwarded === "string") {
+
+  if (typeof forwarded === "string" && forwarded.trim()) {
     return forwarded.split(",")[0].trim();
   }
+
   return req.socket?.remoteAddress || req.ip || "unknown";
 }

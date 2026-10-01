@@ -39,17 +39,33 @@ export default async function handler(req: any, res: any) {
     }
 
     const db = getDb();
-    const snap = await db
-      .collection("users")
-      .doc(uid)
-      .collection("consultations")
-      .get();
 
-    if (!snap.empty) {
-      const batch = db.batch();
-      snap.forEach((doc) => batch.delete(doc.ref));
-      await batch.commit();
-    }
+const consultationsRef = db
+  .collection("users")
+  .doc(uid)
+  .collection("consultations");
+
+while (true) {
+  const snap = await consultationsRef
+    .limit(400)
+    .get();
+
+  if (snap.empty) {
+    break;
+  }
+
+  const batch = db.batch();
+
+  snap.docs.forEach((document) => {
+    batch.delete(document.ref);
+  });
+
+  await batch.commit();
+
+  if (snap.size < 400) {
+    break;
+  }
+}
 
     return res.status(200).json({
       success: true,
