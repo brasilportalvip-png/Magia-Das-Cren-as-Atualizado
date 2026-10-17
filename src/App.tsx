@@ -365,25 +365,20 @@ export default function App() {
         )}
       </main>
 
-      <footer className="fixed bottom-0 lg:relative z-40 w-full lg:px-8 lg:py-3 border-t border-white/5 bg-black/70 backdrop-blur-xl shrink-0 h-36 lg:h-auto overflow-hidden pb-8 lg:pb-3 flex flex-col items-center gap-2">
-        <SpiritualButtons onSelect={setActiveTab} />
-        <div className="hidden lg:flex flex-wrap items-center justify-center gap-4 text-[10px] text-white/40 pt-1">
-          <span>© 2026 Magia das Crenças</span>
-          <span>•</span>
-          <button onClick={() => setLegalModal({ isOpen: true, type: "privacy" })} className="hover:text-amber-400 underline decoration-white/20 transition-colors">Privacidade (LGPD)</button>
-          <span>•</span>
-          <button onClick={() => setLegalModal({ isOpen: true, type: "terms" })} className="hover:text-amber-400 underline decoration-white/20 transition-colors">Termos de Uso</button>
-          <span>•</span>
-          <button onClick={() => setLegalModal({ isOpen: true, type: "cookies" })} className="hover:text-amber-400 underline decoration-white/20 transition-colors">Cookies</button>
-          <span>•</span>
-          <button onClick={() => setLegalModal({ isOpen: true, type: "contact" })} className="hover:text-amber-400 underline decoration-white/20 transition-colors">Contato</button>
-          {user && (
-            <>
-              <span>•</span>
-              <button onClick={() => setLegalModal({ isOpen: true, type: "deletion" })} className="text-rose-400/70 hover:text-rose-400 underline decoration-rose-500/20 transition-colors">Excluir Conta</button>
-            </>
-          )}
+      <footer className="fixed bottom-0 lg:relative z-40 w-full lg:px-8 lg:py-3 border-t border-white/5 bg-black/70 backdrop-blur-xl shrink-0 h-48 lg:h-auto overflow-hidden pb-2 lg:pb-3 flex flex-col items-center gap-1 lg:gap-2">
+        <div className="w-full flex-1 min-h-0 lg:flex-none">
+          <SpiritualButtons onSelect={setActiveTab} />
         </div>
+        <nav aria-label="Informações legais" className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-white/70 px-2 pb-1">
+          <span className="hidden lg:inline">© 2026 Magia das Crenças</span>
+          <a href="/politica-de-privacidade.html" className="hover:text-amber-400 underline decoration-white/20">Privacidade (LGPD)</a>
+          <button onClick={() => setLegalModal({ isOpen: true, type: "terms" })} className="hover:text-amber-400 underline decoration-white/20">Termos de Uso</button>
+          <button onClick={() => setLegalModal({ isOpen: true, type: "cookies" })} className="hover:text-amber-400 underline decoration-white/20">Cookies</button>
+          <button onClick={() => setLegalModal({ isOpen: true, type: "contact" })} className="hover:text-amber-400 underline decoration-white/20">Contato</button>
+          {user && (
+            <button onClick={() => setLegalModal({ isOpen: true, type: "deletion" })} className="text-rose-400/90 hover:text-rose-400 underline decoration-rose-500/20">Excluir Conta</button>
+          )}
+        </nav>
       </footer>
 
       <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} />

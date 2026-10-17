@@ -22,6 +22,10 @@
       "destination": "/api/:path*"
     },
     {
+      "source": "/politica-de-privacidade",
+      "destination": "/politica-de-privacidade.html"
+    },
+    {
       "source": "/((?!api/|.*\\..*).*)",
       "destination": "/index.html"
     }
