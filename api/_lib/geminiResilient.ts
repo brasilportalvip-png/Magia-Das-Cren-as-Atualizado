@@ -42,7 +42,7 @@ function getGeminiModels(): string[] {
 const TOTAL_BUDGET_MS = 60_000;
 
 // Primeira passagem: dá mais tempo para cada modelo responder.
-const FIRST_ROUND_TIMEOUT_MS = 12_000;
+const FIRST_ROUND_TIMEOUT_MS = 25_000;
 
 // Segunda passagem: recuperação rápida apenas dos modelos
 // que falharam por erro temporário.
@@ -83,7 +83,8 @@ function isRetryable(error: any): boolean {
   const msg = getErrorMessage(error).toLowerCase();
 
   return (
-    msg.includes("timeout") ||
+  msg.includes("resposta vazia da ia") ||
+  msg.includes("timeout") ||
     msg.includes("timed out") ||
     msg.includes("network") ||
     msg.includes("fetch failed") ||
@@ -136,6 +137,7 @@ console.info(
     );
 
     let timeoutId: any;
+const controller = new AbortController();
 
     try {
 
@@ -147,19 +149,21 @@ console.info(
 
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
-          reject(
-            new Error(
-              `Timeout limite excedido após ${timeoutMs}ms`
-            )
-          );
-        }, timeoutMs);
+  reject(
+    new Error(
+      `Timeout limite excedido após ${timeoutMs}ms`
+    )
+  );
+  controller.abort();
+}, timeoutMs);
       });
 
       const reqPromise = ai.models.generateContent({
         model,
         contents: prompt,
         config: {
-          systemInstruction:
+  abortSignal: controller.signal,
+  systemInstruction:
             "Você é Cigano Pablo, guia espiritual e oraculista principal do Magia das Crenças. Siga integralmente as instruções e o contexto presentes em contents.",
           maxOutputTokens: 3000,
         },
