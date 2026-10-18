@@ -236,15 +236,28 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (messages.length > 0) {
+   useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const container = scrollRef.current;
+      if (!container || messages.length === 0) return;
+
       const lastMsg = messages[messages.length - 1];
-      if (lastMsg.role === 'model' && messages.length > 1) {
-        lastMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const lastMessage = lastMessageRef.current;
+
+      if (lastMsg.role === "model" && lastMessage) {
+        container.scrollTo({
+          top: Math.max(0, lastMessage.offsetTop - 16),
+          behavior: "auto",
+        });
       } else {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: "auto",
+        });
       }
-    }
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, [messages]);
 
   const handleSendMessage = async (text: string) => {
@@ -495,31 +508,16 @@ Não invente cartas, quedas ou Odùs fora do resultado fornecido.
             <div className="w-1.5 h-1.5 rounded-full bg-amber-500/30"></div>
           </div>
         </div>
-        <div className="relative group">
-          <Search className="absolute left-3.5 top-3 text-white/30 group-focus-within:text-amber-500 transition-colors" size={14} />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar saber oculto ou revelação..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-8 py-2.5 text-xs placeholder:text-white/20 focus:outline-none focus:border-amber-500/50 transition-all group-focus-within:bg-white/10 shadow-inner text-white"
-          />
-          {searchQuery ? (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-2.5 text-white/40 hover:text-white transition-colors"
-            >
-              <X size={14} />
-            </button>
-          ) : (
-            <Sparkles className="absolute right-3.5 top-3 text-amber-500/40 group-focus-within:text-amber-500 transition-colors pointer-events-none" size={14} />
-          )}
-        </div>
+
+
+
+
       </div>
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 scrollbar-visible"
+        className="relative flex-1 min-h-0 overflow-y-scroll p-4 lg:p-6 space-y-6 scrollbar-visible"
+style={{ overflowAnchor: "none" }}
       >
         {searchQuery && filteredMessages.length === 0 && (
           <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-950/20 text-center space-y-3">
@@ -581,15 +579,16 @@ Não invente cartas, quedas ou Odùs fora do resultado fornecido.
       </div>
 
       <div className="p-4 border-t border-white/10 bg-black/40">
-        <div className="flex gap-2 lg:gap-2.5 overflow-x-auto pb-4 pt-1 scrollbar-none px-4 lg:px-6">
+        <div className="flex gap-2 overflow-x-auto pb-2 pt-1">
           {QUICK_SUGGESTIONS.map((s) => (
             <motion.button
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
               key={s.label}
               onClick={() => handleSendMessage(s.label)}
-              className={`px-4 py-2.5 lg:px-6 lg:py-3.5 rounded-xl lg:rounded-2xl bg-gradient-to-br ${s.gradient} ${s.border} border-2 hover:border-white transition-all whitespace-nowrap text-[10px] lg:text-[12px] uppercase tracking-[0.25em] font-black group relative overflow-hidden flex items-center gap-2 lg:gap-3 ${s.glow} hover:brightness-150 active:brightness-90 shrink-0`}
-            >
+              className={`px-3 py-2 rounded-lg bg-gradient-to-br ${s.gradient} ${s.border} border hover:border-white transition-all whitespace-nowrap text-xs font-semibold group relative overflow-hidden flex items-center gap-2 hover:brightness-110 active:brightness-90 shrink-0`}
+
+>
               <div className="absolute inset-x-0 top-0 h-1/2 bg-white/20 blur-sm group-hover:bg-white/30 transition-colors" />
               <div className="absolute inset-0 bg-white/10 opacity-40 group-hover:opacity-60 transition-opacity" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
@@ -606,7 +605,7 @@ Não invente cartas, quedas ou Odùs fora do resultado fornecido.
           ))}
         </div>
 
-        <div className="bg-black/40 rounded-xl p-3 border border-white/10 flex items-center gap-3 group focus-within:border-amber-500/40 transition-all">
+        <div className="bg-amber-950/40 rounded-xl p-3 border-2 border-amber-400/70 shadow-[0_0_18px_rgba(251,191,36,0.18)] flex items-center gap-3 group focus-within:border-amber-300 focus-within:ring-2 focus-within:ring-amber-400/30 transition-all">
           <span className="text-amber-500/30 group-focus-within:text-amber-500 group-focus-within:gold-glow transition-all">◈</span>
           <textarea
             value={input}
@@ -618,12 +617,15 @@ Não invente cartas, quedas ou Odùs fora do resultado fornecido.
               }
             }}
             placeholder="Pergunte ao Cigano Pablo..."
-            className="flex-1 bg-transparent border-none text-sm focus:ring-0 placeholder:text-white/20 italic text-white resize-none h-auto min-h-[24px] max-h-32 pt-0.5 scrollbar-none"
+            aria-label="Sua pergunta ao Cigano Pablo"
+rows={1}
+className="flex-1 min-w-0 bg-transparent border-none text-base leading-relaxed outline-none focus:ring-0 placeholder:text-amber-100/80 text-white resize-none h-[28px] min-h-[28px] max-h-[28px] overflow-y-auto scrollbar-visible"
           />
           <button
             onClick={() => handleSendMessage(input)}
             disabled={!input.trim() || isLoading}
-            className="text-amber-500/50 hover:text-amber-500 disabled:opacity-30 transition-all"
+            aria-label="Enviar pergunta"
+className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-amber-400 text-black hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             <Send size={16} />
           </button>

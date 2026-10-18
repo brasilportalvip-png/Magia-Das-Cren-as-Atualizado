@@ -23,8 +23,7 @@ export default function CharacterAvatar() {
   className="absolute inset-0 w-full h-full object-cover opacity-20"
 />
 
-      {/* Escurecimento do fundo */}
-      <div className="absolute inset-0 bg-black/60 z-[1]" />
+
 
       {/* Atmosfera */}
       <div className="absolute inset-0 z-[2]">
@@ -100,17 +99,7 @@ export default function CharacterAvatar() {
           </div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-6 max-w-[280px] xs:max-w-md text-center px-4"
-        >
-          <p className="text-sm lg:text-lg font-serif italic text-amber-100/90 leading-relaxed drop-shadow-lg">
-            "As estrelas sussurram segredos que só o seu coração pode ouvir agora. O que deseja desvendar nos caminhos da sua alma?"
-          </p>
-
-          <div className="h-[1px] w-24 lg:w-32 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent mx-auto mt-4 lg:mt-6" />
-        </motion.div>
+      
       </div>
     </div>
   );

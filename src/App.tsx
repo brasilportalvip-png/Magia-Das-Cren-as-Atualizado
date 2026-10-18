@@ -220,7 +220,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen lg:h-screen w-full bg-transparent text-white relative overflow-x-hidden lg:overflow-hidden flex flex-col font-sans select-none border-0 overflow-y-auto">
+    <div className="min-h-screen w-full bg-transparent text-white relative overflow-x-hidden flex flex-col font-sans select-none border-0">
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
   <img
     src="/image/Magia Das Crenças Fundo.png"
@@ -298,7 +298,7 @@ export default function App() {
       <main className="relative z-10 flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 p-4 lg:p-6 min-h-0 overflow-y-auto lg:overflow-hidden">
         {activeTab === "home" ? (
           <>
-            <div className="order-2 lg:order-1 lg:col-span-4 xl:col-span-3 h-[500px] lg:h-full min-h-0">
+            <div className="order-1 lg:col-span-6 h-[75dvh] min-h-[560px] shrink-0 min-w-0">
               <ChatSection
                 user={user}
                 onCreditUse={handleUseCredit}
@@ -306,11 +306,11 @@ export default function App() {
               />
             </div>
 
-            <div className="order-1 lg:order-2 lg:col-span-4 xl:col-span-6 flex items-center justify-center py-4 lg:py-0 min-h-0">
+            <div className="order-2 lg:col-span-3 flex items-center justify-center py-4 lg:py-0 min-h-0 min-w-0">
               <CharacterAvatar />
             </div>
 
-            <div className="order-3 lg:col-span-4 xl:col-span-3 h-auto lg:h-full min-h-0 mb-20 lg:mb-0">
+            <div className="order-3 lg:col-span-3 h-auto lg:h-full min-h-0 min-w-0 mb-20 lg:mb-0">
               <UserPanel
                 user={user}
                 onSelectConsultation={setActiveTab}
@@ -327,44 +327,15 @@ export default function App() {
                 onCreditUse={(amt) => handleUseCredit(amt)}
                 initialMessage={`Cigano Pablo, por favor, realize uma leitura de **${activeTab}** para mim agora.`}
                 onNewAdvice={(advice) => setCurrentAdvice(advice)}
-                key={activeTab}
+                
+
+                            key={activeTab}
               />
             </div>
 
-            <div className="w-full lg:w-[350px] shrink-0 bg-white/5 backdrop-blur-xl rounded-[32px] border border-white/10 p-6 lg:p-8 flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden h-fit lg:h-full">
-              <div
-  className="absolute inset-0 opacity-10 pointer-events-none bg-cover bg-center"
-  style={{ backgroundImage: "url('/image/Magia Das Crenças Fundo.png')" }}
-></div>
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="w-16 h-16 lg:w-24 lg:h-24 rounded-full border border-amber-500/20 flex items-center justify-center text-amber-500 bg-amber-500/5 shadow-[0_0_40px_rgba(245,158,11,0.1)]"
-              >
-                <Sparkles size={32} />
-              </motion.div>
-
-              <h2 className="text-2xl lg:text-3xl font-serif italic text-white uppercase tracking-widest">
-                {activeTab}
-              </h2>
-
-              <p className="text-white/50 text-xs lg:text-sm leading-relaxed italic font-serif max-w-[280px]">
-                "O véu entre os mundos se torna tênue. Concentre-se em sua pergunta enquanto os símbolos sagrados se revelam."
-              </p>
-
-              <div className="flex flex-col gap-3 w-full pt-6 max-w-[240px]">
-                <div className="px-4 py-2 bg-black/20 rounded-xl text-[9px] uppercase tracking-widest text-amber-500/60 border border-white/5">
-                  Conexão Estabelecida
-                </div>
-                <div className="px-4 py-2 bg-black/20 rounded-xl text-[9px] uppercase tracking-widest text-amber-500/60 border border-white/5">
-                  Sintonizando Vibrações
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </main>
-
       <footer className="fixed bottom-0 lg:relative z-40 w-full lg:px-8 lg:py-3 border-t border-white/5 bg-black/70 backdrop-blur-xl shrink-0 h-48 lg:h-auto overflow-hidden pb-2 lg:pb-3 flex flex-col items-center gap-1 lg:gap-2">
         <div className="w-full flex-1 min-h-0 lg:flex-none">
           <SpiritualButtons onSelect={setActiveTab} />
