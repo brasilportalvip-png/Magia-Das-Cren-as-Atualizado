@@ -141,29 +141,7 @@ export default function UserPanel({ user, onSelectConsultation, onEditProfile, a
           </div>
         </div>
 
-        {/* Pablo's Advice - Highlighted Area */}
-        <div className="relative group">
-           <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-purple-500/20 blur opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl" />
-           <div className="relative bg-black/40 border border-amber-500/20 rounded-2xl p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-amber-500 font-black flex items-center gap-2 italic">
-                  <Sparkles size={12} /> Conselho do Cigano
-                </span>
-                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shadow-[0_0_10px_#f59e0b]" />
-              </div>
-              <p className="text-sm font-serif italic text-amber-50 leading-relaxed line-clamp-4">
-                {advice || "\"As correntes do destino fluem em sua direção. Mantenha os olhos da alma abertos, pois a resposta que busca está no silêncio da sua respiração.\""}
-              </p>
-              <div className="w-full h-px bg-white/5" />
-              <button 
-                onClick={() => onSelectConsultation?.("Conselho")}
-                className="w-full text-[10px] uppercase tracking-widest text-white/30 hover:text-white transition-colors flex items-center justify-center gap-2 group/btn"
-              >
-                Ver Reflexão Completa
-                <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
-              </button>
-           </div>
-        </div>
+        
 
         {/* Consultation Menu - Bold List */}
         <div className="space-y-4">
