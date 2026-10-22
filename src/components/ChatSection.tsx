@@ -328,24 +328,7 @@ export default function ChatSection({ user, onCreditUse, onNewAdvice, initialMes
       return;
     }
 
-    let amount = 1;
-
-    if (isTarotConsultation) amount = 3;
-    else if (lowerText.includes("mapa astral")) amount = 5;
-    else if (lowerText.includes("búzios") || lowerText.includes("buzios")) amount = 4;
-    else if (lowerText.includes("ifá")) amount = 4;
-    else if (lowerText.includes("odu")) amount = 2;
-    else if (lowerText.includes("orixás") || lowerText.includes("orixas")) amount = 4;
-    else if (lowerText.includes("numerologia")) amount = 2;
-    else if (lowerText.includes("anjo guardião") || lowerText.includes("anjo guardiao")) amount = 2;
-    else if (lowerText.includes("cabala")) amount = 2;
-    else if (lowerText.includes("daimon")) amount = 2;
-    else if (lowerText.includes("amor")) amount = 2;
-    else if (lowerText.includes("dinheiro")) amount = 2;
-    else if (lowerText.includes("saúde")) amount = 2;
-    else if (lowerText.includes("trabalho")) amount = 2;
-    else if (lowerText.includes("espiritual")) amount = 2;
-    else if (lowerText.includes("família")) amount = 2;
+       const amount = 5;
 
     if ((user.credits || 0) < amount) {
       setMessages(prev => [...prev, {
