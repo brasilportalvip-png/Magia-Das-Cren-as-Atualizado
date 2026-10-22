@@ -1,66 +1,11 @@
 import { getDb, admin } from "./firebaseAdmin.js";
 
-export function calculateConsultationCost(message: string, oracleType?: string): number {
-  const text = (message || "").toLowerCase();
-  const oracle = (oracleType || "").toLowerCase();
-
-  if (oracle === "tarot" || text.includes("tarot")) return 3;
-  if (oracle === "mapa astral" || text.includes("mapa astral")) return 5;
-  if (
-    oracle.includes("búzios") ||
-    oracle.includes("buzios") ||
-    text.includes("búzios") ||
-    text.includes("buzios")
-  ) {
-    return 4;
-  }
-  if (
-    oracle.includes("ifá") ||
-    oracle.includes("ifa") ||
-    text.includes("ifá") ||
-    text.includes("ifa")
-  ) {
-    return 4;
-  }
-  if (oracle === "odu" || text.includes("odu")) return 2;
-  if (
-    oracle.includes("orixá") ||
-    oracle.includes("orixa") ||
-    text.includes("orixá") ||
-    text.includes("orixa")
-  ) {
-    return 4;
-  }
-  if (oracle === "numerologia" || text.includes("numerologia")) return 2;
-  if (
-    oracle.includes("anjo") ||
-    text.includes("anjo guardião") ||
-    text.includes("anjo guardiao")
-  ) {
-    return 2;
-  }
-  if (oracle === "cabala" || text.includes("cabala")) return 2;
-  if (oracle.includes("daimon") || text.includes("daimon")) return 2;
-  if (
-    text.includes("amor") ||
-    text.includes("relacionamento") ||
-    text.includes("ex") ||
-    text.includes("me ama") ||
-    text.includes("namorad") ||
-    text.includes("casament") ||
-    text.includes("paixao") ||
-    text.includes("paixão") ||
-    text.includes("reconcilia")
-  ) {
-    return 2;
-  }
-  if (text.includes("dinheiro") || text.includes("prosperidade")) return 2;
-  if (text.includes("trabalho") || text.includes("emprego")) return 2;
-  if (text.includes("saúde") || text.includes("saude")) return 2;
-  if (text.includes("espiritual")) return 2;
-  if (text.includes("família") || text.includes("familia")) return 2;
-
-  return 1;
+// Qualquer pergunta ou oráculo custa 5 créditos.
+export function calculateConsultationCost(
+  _message: string,
+  _oracleType?: string
+): number {
+  return 5;
 }
 
 export interface DebitResult {

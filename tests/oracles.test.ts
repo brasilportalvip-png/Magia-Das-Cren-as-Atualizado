@@ -46,33 +46,33 @@ describe("Oráculos & Spiritual Utils", () => {
 });
 
 describe("Ledger & Custos de Consulta", () => {
-  it("determina custo de 3 para Tarot", () => {
-    expect(calculateConsultationCost("Tirar 3 cartas", "tarot")).toBe(3);
-    expect(calculateConsultationCost("Quero uma tiragem de tarot")).toBe(3);
+  it("determina custo de 5 para Tarot", () => {
+    expect(calculateConsultationCost("Tirar 3 cartas", "tarot")).toBe(5);
+    expect(calculateConsultationCost("Quero uma tiragem de tarot")).toBe(5);
   });
 
   it("determina custo de 5 para Mapa Astral", () => {
     expect(calculateConsultationCost("Meu mapa astral completo")).toBe(5);
   });
 
-  it("determina custo de 4 para Búzios e Ifá", () => {
-    expect(calculateConsultationCost("Jogo de búzios")).toBe(4);
-    expect(calculateConsultationCost("Consulta de ifá")).toBe(4);
+  it("determina custo de 5 para Búzios e Ifá", () => {
+    expect(calculateConsultationCost("Jogo de búzios")).toBe(5);
+    expect(calculateConsultationCost("Consulta de ifá")).toBe(5);
   });
 
-  it("determina custo de 2 para Odù, Orixás, Numerologia e Anjo", () => {
-    expect(calculateConsultationCost("Qual meu odu?")).toBe(2);
-    expect(calculateConsultationCost("Quem é meu anjo guardião?")).toBe(2);
-    expect(calculateConsultationCost("Numerologia do meu nome")).toBe(2);
+  it("determina custo de 5 para Odù, Orixás, Numerologia e Anjo", () => {
+    expect(calculateConsultationCost("Qual meu odu?")).toBe(5);
+    expect(calculateConsultationCost("Quem é meu anjo guardião?")).toBe(5);
+    expect(calculateConsultationCost("Numerologia do meu nome")).toBe(5);
   });
 
-  it("determina custo de 2 para temas de Amor, Dinheiro, Trabalho", () => {
-    expect(calculateConsultationCost("Ele ainda me ama?")).toBe(2);
-    expect(calculateConsultationCost("Como vai meu dinheiro e trabalho?")).toBe(2);
+  it("determina custo de 5 para temas de Amor, Dinheiro, Trabalho", () => {
+    expect(calculateConsultationCost("Ele ainda me ama?")).toBe(5);
+    expect(calculateConsultationCost("Como vai meu dinheiro e trabalho?")).toBe(5);
   });
 
-  it("determina custo padrão de 1 para perguntas gerais", () => {
-    expect(calculateConsultationCost("Bom dia Cigano Pablo")).toBe(1);
+  it("determina custo padrão de 5 para perguntas gerais", () => {
+    expect(calculateConsultationCost("Bom dia Cigano Pablo")).toBe(5);
   });
 });
 
